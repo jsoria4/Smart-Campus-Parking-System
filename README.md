@@ -6,11 +6,11 @@ A multi-hardware embedded systems project implementing a fully automated, FSM-dr
 
 | Name | Role | Module |
 |------|------|--------|
-| [Member 1] | [Role] | Space Management Counter |
-| [Member 2] | [Role] | Entrance Gate Module |
-| [Member 3] | [Role] | Exit Gate Module |
-| [Member 4] | [Role] | Safety & Emergency Override |
-| [Member 5] | [Role] | Adaptive Lighting Efficiency |
+| [Jasmine] | [Role] | Space Management Counter |
+| [Landon] | [Role] | Entrance Gate Module |
+| [Jeremy] | [Role] | Exit Gate Module |
+| [Connor] | [Role] | Safety & Emergency Override |
+| [Robert] | [Role] | Adaptive Lighting Efficiency |
 | [Member 6] | [Role] | Traffic Congestion Prevention / IoT Dashboard |
 
 ---
