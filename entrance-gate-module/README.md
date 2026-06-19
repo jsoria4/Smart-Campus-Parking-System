@@ -1,0 +1,67 @@
+# Entrance Gate Module
+
+## Module Description
+Controls the physical entry gate of the parking lot. Uses RFID/NFC tag detection to authenticate vehicles, interfaces with the space management counter to check availability, and drives the gate motor through its open/hold/close cycle.
+
+---
+
+## Assigned Member
+[NAME]
+
+## Language Used
+[e.g. SystemVerilog / Python / C++]
+
+## Hardware/Device
+[e.g. FPGA DE10-Nano / Arduino Uno / Raspberry Pi]
+
+## Sensors/Components
+[list here — e.g. RFID reader, servo motor, IR sensor, LED indicators]
+
+---
+
+## FSM States
+
+| State | Description |
+|-------|-------------|
+| `IDLE` | Waiting for a vehicle/tag to be presented at the entrance |
+| `TAG_DETECTED` | RFID/NFC tag signal received — begin verification process |
+| `VERIFY_TAG` | Validate tag ID against the authorized vehicle database |
+| `ACCESS_GRANTED` | Tag is valid and a space is available — proceed to open gate |
+| `ACCESS_DENIED` | Tag is invalid or lot is full — signal rejection to driver |
+| `OPEN_GATE` | Send open command to gate motor controller |
+| `HOLD_GATE` | Keep gate open while vehicle clears the sensor |
+| `CLOSE_GATE` | Send close command once vehicle has passed through |
+| `TERMINATE_MOTOR` | Stop motor drive signal after gate reaches closed position |
+
+### State Transition Diagram
+```
+IDLE ──[tag detected]──► TAG_DETECTED ──► VERIFY_TAG
+                                               │
+                          ┌────────────────────┴──────────────────┐
+                    [valid + space]                          [invalid / full]
+                          │                                        │
+                          ▼                                        ▼
+                   ACCESS_GRANTED                           ACCESS_DENIED
+                          │                                        │
+                          ▼                                        ▼
+                      OPEN_GATE                                  IDLE
+                          │
+                          ▼
+                      HOLD_GATE ──[vehicle cleared]──► CLOSE_GATE
+                                                            │
+                                                            ▼
+                                                     TERMINATE_MOTOR
+                                                            │
+                                                            ▼
+                                                           IDLE
+```
+
+---
+
+## Interface/Communication
+[how this module talks to others — e.g., reads FULL signal from space-management-counter; sends INCREMENT pulse to space-management-counter on ACCESS_GRANTED; communicates with iot-dashboard-hps over UART/SPI to log entry events]
+
+---
+
+## How to Run/Build
+[instructions here]
