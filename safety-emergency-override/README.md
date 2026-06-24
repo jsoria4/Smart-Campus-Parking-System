@@ -4,7 +4,7 @@
 Continuously monitors environmental conditions (smoke, fire, gas, emergency button) and triggers a system-wide evacuation override when a hazard is detected. Overrides all gate and lighting modules, activates alarms, and displays evacuation instructions.
 
 NOTE: 
-In the Safety_and+Emergency+Override_Module, there are two different commands for the clock, each with a different frequency. CLOCK_50 is the standard 1.5mHz frequency(used for standard polling), and slow_clk is 1Hz (used for testing of states). To use one over the other, simply comment or uncomment out one or the other.
+In the Safety_and_Emergency_Override_Module, there are two different commands for the clock, each with a different frequency. CLOCK_50 is the standard 1.5mHz frequency(used for standard polling), and slow_clk is 1Hz (used for testing of states). To use one over the other, simply comment or uncomment out one or the other.
 ---
 
 ## Assigned Member
