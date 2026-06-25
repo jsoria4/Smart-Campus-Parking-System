@@ -3,10 +3,6 @@
 ## Module Description
 End-to-end integration scripts and system-level tests that wire all FSM modules together into a running Smart Campus Parking System. This is the single entry point for full system bring-up and cross-module validation.
 
----
-
-## Assigned Member
-[NAME] — Systems Integrator
 
 ## Language Used
 [e.g. Python / Shell]
