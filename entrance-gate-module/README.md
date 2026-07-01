@@ -6,16 +6,21 @@ Controls the physical entry gate of the parking lot. Uses RFID/NFC tag detection
 ---
 
 ## Assigned Member
-[NAME]
+Landon
 
 ## Language Used
-[e.g. SystemVerilog / Python / C++]
+C++
 
 ## Hardware/Device
-[e.g. FPGA DE10-Nano / Arduino Uno / Raspberry Pi]
+Arduino Uno
 
 ## Sensors/Components
 [list here — e.g. RFID reader, servo motor, IR sensor, LED indicators]
+Small Servo Motor
+RFID Reader
+LED indicators
+Passive Buzzer
+Ultrasonic Sensor
 
 ---
 
@@ -64,4 +69,7 @@ IDLE ──[tag detected]──► TAG_DETECTED ──► VERIFY_TAG
 ---
 
 ## How to Run/Build
-[instructions here]
+1. Open EntranceFSM.ino in src folder in Arduino IDE.
+2. Connect an Arduino Uno to your device via USB
+3. Press the arrow in the top left to deploy the code to the Microcontroller
+4. Done!
