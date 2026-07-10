@@ -50,7 +50,8 @@ enum class State {
   CloseGate,
   CounterUpMod,
   DriveOpenServo,
-  DriveCloseServo
+  DriveCloseServo,
+  Emergency
 };
 
 /* State Names in an Array for simplicity */
@@ -88,6 +89,11 @@ const int SERVO = 3;
 const int ULTRA_ECHO = 4;
 const int ULTRA_TRIG = 2;
 const int BUZZER = 5;
+
+/* Analog pins for communication */
+const int VEHICLE_ENTERED = 0;
+const int EMERGENCY_OVERRIDE = 1;
+const int PLATE_AUTHORIZED = 2;
 
 /* The baud rate to the serial monitor. */
 const unsigned int BAUD_RATE = 9600;
@@ -186,6 +192,9 @@ const AuthorizedUID AUTHORIZED_UIDS[] = {
 /* Number of entries in AUTHORIZED_UIDS. */
 const unsigned int AUTHORIZED_UID_COUNT = sizeof(AUTHORIZED_UIDS) / sizeof(AUTHORIZED_UIDS[0]);
 
+/* The int value which an Arduino R4 reads as high voltage */
+const int HIGH_VOLTAGE = 1023;
+
 /* State  ----------------------------------------------------------------- */
 
 
@@ -220,7 +229,13 @@ UltraSonicDistanceSensor distanceSensor(ULTRA_TRIG, ULTRA_ECHO);
 
 /* Helper Functions ----------------------------------------------------------------- */
 
+bool isEmergencyOverrideHigh() {
+  return analogRead(EMERGENCY_OVERRIDE) == HIGH_VOLTAGE;
+}
 
+bool isPlateAuthorizedHigh() {
+  return analogRead(PLATE_AUTHORIZED) == HIGH_VOLTAGE;
+}
 
 /**
  * Resolves an LEDColor enum to its corresponding pin.
@@ -577,6 +592,17 @@ void loop() {
       entryCount++;
       Serial.print("Entry count: ");
       Serial.println(entryCount);
+
+      transitionTo(State::Idle);
+      break;
+    }
+    
+    // ── Emergency ─────────────────────────────────────────────────
+    case State::Emergency: {
+
+      if (isEmergencyHigh()) {
+        return;
+      }
 
       transitionTo(State::Idle);
       break;

@@ -64,7 +64,9 @@ IDLE ──[tag detected]──► TAG_DETECTED ──► VERIFY_TAG
 ---
 
 ## Interface/Communication
-[how this module talks to others — e.g., reads FULL signal from space-management-counter; sends INCREMENT pulse to space-management-counter on ACCESS_GRANTED; communicates with iot-dashboard-hps over UART/SPI to log entry events]
+(output) vehicle_entered -> A brief signal sent to FSM #1 Space Management & Controller to increment the vehicle count
+(input) emergency_override -> A signal from FSM #3 Safety & Emergency Override to force the gate open for emergency purposes
+(input) plate_authorized -> A signal from the Raspberry Pi 5 AI Model confirming a plate was read
 
 ---
 
