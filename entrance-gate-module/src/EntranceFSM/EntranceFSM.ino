@@ -321,6 +321,15 @@ void transitionTo(const State next) {
 }
 
 /**
+ * @param since a millis() timestamp to measure from.
+ * @param duration how long must have passed, in milliseconds.
+ * @return true once `duration` has passed since `since`.
+ */
+bool elapsedSince(const unsigned long since, const unsigned long duration) {
+  return now - since >= duration;
+}
+
+/**
  * Checks whether an RFID card has been presented to the reader.
  *
  * @return true if a new card was detected and selected.
@@ -563,7 +572,7 @@ void loop() {
     case State::Buzzer: {
       showAlertLEDs();
 
-      if (now - buzzerStartMs >= BUZZER_DURATION_MS) {
+      if (elapsedSince(buzzerStartMs, BUZZER_DURATION_MS)) {
         setBuzzer(false);
         transitionTo(State::Idle);
       }
@@ -600,7 +609,7 @@ void loop() {
       setLEDEnabled(LEDColor::Green, true);
       setLEDEnabled(LEDColor::Yellow, false);
 
-      if (now - gateOpenedMs >= GATE_HOLD_MS) {
+      if (elapsedSince(gateOpenedMs, GATE_HOLD_MS)) {
         transitionTo(State::Ultrasense);
       }
       // else: self-loop ("wait 15s")
@@ -644,7 +653,7 @@ void loop() {
     case State::IncrementSignal: {
       analogWrite(VEHICLE_ENTERED, DAC_HIGH);
 
-      if (now - stateEnteredMs < INCREMENT_SIGNAL_DURATION_MS) {
+      if (!elapsedSince(stateEnteredMs, INCREMENT_SIGNAL_DURATION_MS)) {
         return;
       }
 
@@ -680,7 +689,7 @@ void loop() {
         return;
       }
 
-      if (now - stateEnteredMs < 250) {
+      if (!elapsedSince(stateEnteredMs, 250)) {
         return;
       }
 
@@ -693,7 +702,7 @@ void loop() {
       enableLEDS();
       setBuzzer(true);
 
-      if (now - stateEnteredMs < 250) {
+      if (!elapsedSince(stateEnteredMs, 250)) {
         return;
       }
 
