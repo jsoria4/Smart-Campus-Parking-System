@@ -234,9 +234,13 @@ unsigned int happyBuzzerIndex = 0;
 unsigned long happyBuzzerStepMs = 0;
 bool happyBuzzerActive = false;
 
-/* Gate sequence tracking. */
-unsigned long gateStepMs = 0;
-unsigned long gateAngle = 0;
+/* Gate sequence tracking. `lastStepMs` and `angle` are meaningless apart from
+ * each other — they only make sense together as "where the sweep is right now." */
+struct ServoSweep {
+  unsigned long lastStepMs;
+  int angle;
+};
+ServoSweep gateSweep = { 0, 0 };
 
 /* Current state of the FSM. */
 State currentState;
@@ -444,14 +448,14 @@ void updateHappyBuzzer() {
  * @return true once the servo has reached target; false if still moving.
  */
 bool stepServoToward(const int target) {
-  if (now - gateStepMs < GATE_TICK) return false;
+  if (now - gateSweep.lastStepMs < GATE_TICK) return false;
 
-  gateStepMs = now;
+  gateSweep.lastStepMs = now;
 
-  if (gateAngle == target) return true;
+  if (gateSweep.angle == target) return true;
 
-  gateAngle += (gateAngle < target) ? 1 : -1;
-  servo.write(gateAngle);
+  gateSweep.angle += (gateSweep.angle < target) ? 1 : -1;
+  servo.write(gateSweep.angle);
   return false;
 }
 
@@ -543,7 +547,7 @@ void handleOpenGate() {
 
   startHappyBuzzer();
 
-  gateAngle = SERVO_CLOSED;
+  gateSweep.angle = SERVO_CLOSED;
   transitionTo(State::DriveOpenServo);
 }
 
@@ -586,7 +590,7 @@ void handleUltrasense() {
 void handleCloseGate() {
   showTransitLEDs();
 
-  gateAngle = SERVO_OPEN;
+  gateSweep.angle = SERVO_OPEN;
   transitionTo(State::DriveCloseServo);
 }
 
@@ -700,7 +704,7 @@ void setup() {
 
   servo.attach(SERVO);
   servo.write(SERVO_CLOSED);
-  gateAngle = SERVO_CLOSED;
+  gateSweep.angle = SERVO_CLOSED;
 
   disableLEDS();
   setBuzzer(false);
