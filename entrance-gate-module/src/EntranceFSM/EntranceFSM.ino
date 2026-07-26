@@ -125,10 +125,10 @@ const unsigned int INIT_DELAY = 100;
 /* How long the gate is held open after opening, in milliseconds. */
 const unsigned long GATE_HOLD_MS = 3UL * 1000UL;
 
-/* How long the increment signal is held high for */
+/* How long the increment signal is held high for. */
 const unsigned long INCREMENT_SIGNAL_DURATION_MS = 100UL;
 
-/* How long the increment signal is held high for */
+/* How long the emergency flash lights are held on for. */
 const unsigned long EMERGENCY_FLASH_DURATION_MS = 250UL;
 
 /* Distance threshold (cm) under which the ultrasonic sensor considers something present. */
@@ -183,6 +183,9 @@ const unsigned int HAPPY_BUZZER_GAP_MS = 30;
 /* Authorized UID Settings -----------------------------------------------------------------*/
 
 
+
+/* Prints every scanned UID to Serial when true. Flip to false before shipping. */
+const bool DEBUG_RFID = true;
 
 /**
  * The maximum UID length the reader can produce.
@@ -368,7 +371,9 @@ void printLastUID() {
  * @return true if the card is verified.
  */
 bool isCardVerified() {
-  printLastUID(); // Remove or gate behind a debug flag in production
+  if (DEBUG_RFID) {
+    printLastUID();
+  }
 
   const byte readLen = mfrc522.uid.size;
 
