@@ -54,6 +54,7 @@ enum class State {
   Emergency,
   EmergencyFlash,
   AtCapacity,
+  Count, // sentinel — must stay last; used to size/validate stateHandlers
 };
 
 /* State Names in an Array for simplicity */
@@ -249,6 +250,9 @@ Servo servo;
 /* Ultrasonic sensor class. */
 UltraSonicDistanceSensor distanceSensor(ULTRA_TRIG, ULTRA_ECHO);
 
+/* LEDColor enum value -> pin, indexed by static_cast<int>(LEDColor). */
+const int LED_PINS[] = { RED_LED, YELLOW_LED, GREEN_LED, CAPACITY_LED };
+
 /**
  * Resolves an LEDColor enum to its corresponding pin.
  *
@@ -257,13 +261,7 @@ UltraSonicDistanceSensor distanceSensor(ULTRA_TRIG, ULTRA_ECHO);
  * @return the pin on the microcontroller that drives the LED.
  */
 int getLEDPin(const LEDColor LED) {
-  switch (LED) {
-    case LEDColor::Red:    return RED_LED;
-    case LEDColor::Yellow: return YELLOW_LED;
-    case LEDColor::Green:  return GREEN_LED;
-    case LEDColor::Blue: return CAPACITY_LED;
-    default: return 0;
-  }
+  return LED_PINS[static_cast<int>(LED)];
 }
 
 /**
@@ -491,6 +489,192 @@ bool isPlateAuthorized() {
   return analogRead(PLATE_AUTHORIZED) >= LOGICAL_HIGH;
 }
 
+/* State Handlers ----------------------------------------------------------------- */
+
+
+
+// ── Idle ─────────────────────────────────────────────────────────
+// Wait for an RFID card to be presented. Self-loops while no scan.
+void handleIdle() {
+  showAlertLEDs();
+
+  bool currentPlateAuthorized = isPlateAuthorized();
+
+  if (rfidDetected()) {
+    transitionTo(State::Scan);
+  } else if (isSpaceFull()) {
+    transitionTo(State::AtCapacity);
+  } else if (currentPlateAuthorized && currentPlateAuthorized != lastPlateAuthorized) { // On the rising edge
+    transitionTo(State::OpenGate);
+  }
+  lastPlateAuthorized = currentPlateAuthorized;
+  // else: self-loop ("no rfid scan")
+}
+
+// ── Scan ─────────────────────────────────────────────────────────
+// Verify the scanned card. Branch to OpenGate on success or
+// Buzzer on failure.
+void handleScan() {
+  if (isCardVerified()) {
+    transitionTo(State::OpenGate);
+  } else {
+    buzzerStartMs = now;
+    setBuzzer(true);
+    transitionTo(State::Buzzer);
+  }
+}
+
+// ── Buzzer ───────────────────────────────────────────────────────
+// Sound buzzer for BUZZER_DURATION_MS, then return to Idle.
+void handleBuzzer() {
+  showAlertLEDs();
+
+  if (elapsedSince(buzzerStartMs, BUZZER_DURATION_MS)) {
+    setBuzzer(false);
+    transitionTo(State::Idle);
+  }
+  // else: self-loop ("keep buzzing")
+}
+
+// ── OpenGate ─────────────────────────────────────────────────────
+// Command the gate to open, then move to HoldGateOpen.
+void handleOpenGate() {
+  showTransitLEDs();
+
+  startHappyBuzzer();
+
+  gateAngle = SERVO_CLOSED;
+  transitionTo(State::DriveOpenServo);
+}
+
+// ── DriveOpenServo ───────────────────────────────────────────────
+// Drives the servo when opening the gate.
+void handleDriveOpenServo() {
+  if (!stepServoToward(SERVO_OPEN)) return;
+
+  gateOpenedMs = now;
+  transitionTo(State::HoldGateOpen);
+}
+
+// ── HoldGateOpen ─────────────────────────────────────────────────
+// Hold the gate open for GATE_HOLD_MS, then check for vehicle
+// presence via ultrasonic.
+void handleHoldGateOpen() {
+  setLEDEnabled(LEDColor::Green, true);
+  setLEDEnabled(LEDColor::Yellow, false);
+
+  if (elapsedSince(gateOpenedMs, GATE_HOLD_MS)) {
+    transitionTo(State::Ultrasense);
+  }
+  // else: self-loop ("wait 15s")
+}
+
+// ── Ultrasense ───────────────────────────────────────────────────
+// Keep gate open while something is detected in front of it.
+// Once the path is clear, transition to Close.
+void handleUltrasense() {
+  if (ultrasonicDetected()) {
+    return; // self-loop ("dtced")
+  }
+
+  // "!detected" — clear to close
+  transitionTo(State::CloseGate);
+}
+
+// ── CloseGate ─────────────────────────────────────────────────────
+// Close the gate and move on to update the counter.
+void handleCloseGate() {
+  showTransitLEDs();
+
+  gateAngle = SERVO_OPEN;
+  transitionTo(State::DriveCloseServo);
+}
+
+// ── DriveCloseServo ───────────────────────────────────────────────
+// Drives the servo when closing the gate.
+void handleDriveCloseServo() {
+  if (!stepServoToward(SERVO_CLOSED)) return;
+
+  transitionTo(State::IncrementSignal);
+}
+
+// ── IncrementSignal ─────────────────────────────────────────────────
+void handleIncrementSignal() {
+  analogWrite(VEHICLE_ENTERED, DAC_HIGH);
+
+  if (!elapsedSince(stateEnteredMs, INCREMENT_SIGNAL_DURATION_MS)) {
+    return;
+  }
+
+  analogWrite(VEHICLE_ENTERED, DAC_LOW);
+  transitionTo(State::Idle);
+}
+
+// ── At Capacity ─────────────────────────────────────────────────
+void handleAtCapacity() {
+  setLEDEnabled(LEDColor::Blue, true);
+
+  if (isSpaceFull()) {
+    return;
+  }
+
+  setLEDEnabled(LEDColor::Blue, false);
+
+  transitionTo(State::Idle);
+}
+
+// ── Emergency ─────────────────────────────────────────────────
+void handleEmergency() {
+  servo.write(SERVO_OPEN);
+  disableLEDS();
+  setBuzzer(false);
+  analogWrite(VEHICLE_ENTERED, DAC_LOW); // force low in case emergency interrupted IncrementSignal mid-pulse
+
+  if (!isEmergencyOverrideActive()) {
+    servo.write(SERVO_CLOSED);
+    transitionTo(State::Idle);
+    return;
+  }
+
+  if (!elapsedSince(stateEnteredMs, EMERGENCY_FLASH_DURATION_MS)) {
+    return;
+  }
+
+  transitionTo(State::EmergencyFlash);
+}
+
+// ── Emergency Flash ─────────────────────────────────────────────────
+void handleEmergencyFlash() {
+  enableLEDS();
+  setBuzzer(true);
+
+  if (!elapsedSince(stateEnteredMs, EMERGENCY_FLASH_DURATION_MS)) {
+    return;
+  }
+
+  transitionTo(State::Emergency);
+}
+
+/* Dispatch table: index = static_cast<int>(State). Order must match the State enum. */
+void (*const stateHandlers[])() = {
+  handleIdle,
+  handleScan,
+  handleBuzzer,
+  handleOpenGate,
+  handleHoldGateOpen,
+  handleUltrasense,
+  handleCloseGate,
+  handleIncrementSignal,
+  handleDriveOpenServo,
+  handleDriveCloseServo,
+  handleEmergency,
+  handleEmergencyFlash,
+  handleAtCapacity,
+};
+
+static_assert(sizeof(stateHandlers) / sizeof(stateHandlers[0]) == static_cast<int>(State::Count),
+              "stateHandlers is out of sync with the State enum — add/remove a handler to match");
+
 /* Setup & Loop ----------------------------------------------------------------- */
 
 
@@ -541,189 +725,5 @@ void loop() {
     transitionTo(State::Emergency);
   }
 
-  switch (currentState) {
-    // ── Idle ─────────────────────────────────────────────────────────
-    // Wait for an RFID card to be presented. Self-loops while no scan.
-    case State::Idle: {
-      showAlertLEDs();
-
-      bool currentPlateAuthorized = isPlateAuthorized();
-
-      if (rfidDetected()) {
-        transitionTo(State::Scan);
-      } else if (isSpaceFull()) {
-        transitionTo(State::AtCapacity);
-      } else if (currentPlateAuthorized && currentPlateAuthorized != lastPlateAuthorized) { // On the rising edge
-        transitionTo(State::OpenGate);
-      }
-      lastPlateAuthorized = currentPlateAuthorized;
-      // else: self-loop ("no rfid scan")
-      break;
-    }
-
-    // ── Scan ─────────────────────────────────────────────────────────
-    // Verify the scanned card. Branch to OpenGate on success or
-    // Buzzer on failure.
-    case State::Scan: {
-      if (isCardVerified()) {
-        transitionTo(State::OpenGate);
-      } else {
-        buzzerStartMs = now;
-        setBuzzer(true);
-        transitionTo(State::Buzzer);
-      }
-      break;
-    }
-
-    // ── Buzzer ───────────────────────────────────────────────────────
-    // Sound buzzer for BUZZER_DURATION_MS, then return to Idle.
-    case State::Buzzer: {
-      showAlertLEDs();
-
-      if (elapsedSince(buzzerStartMs, BUZZER_DURATION_MS)) {
-        setBuzzer(false);
-        transitionTo(State::Idle);
-      }
-      // else: self-loop ("keep buzzing")
-      break;
-    }
-
-    // ── OpenGate ─────────────────────────────────────────────────────
-    // Command the gate to open, then move to HoldGateOpen.
-    case State::OpenGate: {
-      showTransitLEDs();
-
-      startHappyBuzzer();
-
-      gateAngle = SERVO_CLOSED;
-      transitionTo(State::DriveOpenServo);
-      break;
-    }
-
-    // ── DriveOpenServo ───────────────────────────────────────────────
-    // Drives the servo when opening the gate with a for-loop structure
-    case State::DriveOpenServo: {
-      if (!stepServoToward(SERVO_OPEN)) return;
-
-      gateOpenedMs = now;
-      transitionTo(State::HoldGateOpen);
-      break;
-    }
-
-    // ── HoldGateOpen ─────────────────────────────────────────────────
-    // Hold the gate open for GATE_HOLD_MS, then check for vehicle
-    // presence via ultrasonic.
-    case State::HoldGateOpen: {
-      setLEDEnabled(LEDColor::Green, true);
-      setLEDEnabled(LEDColor::Yellow, false);
-
-      if (elapsedSince(gateOpenedMs, GATE_HOLD_MS)) {
-        transitionTo(State::Ultrasense);
-      }
-      // else: self-loop ("wait 15s")
-      break;
-    }
-
-    // ── Ultrasense ───────────────────────────────────────────────────
-    // Keep gate open while something is detected in front of it.
-    // Once the path is clear, transition to Close.
-    case State::Ultrasense: {
-      if (ultrasonicDetected()) {
-        // self-loop ("dtced")
-        break;
-      }
-
-      // "!detected" — clear to close
-      transitionTo(State::CloseGate);
-      break;
-    }
-
-    // ── CloseGate ─────────────────────────────────────────────────────
-    // Close the gate and move on to update the counter.
-    case State::CloseGate: {
-      showTransitLEDs();
-
-      gateAngle = SERVO_OPEN;
-      transitionTo(State::DriveCloseServo);
-      break;
-    }
-
-    // ── DriveCloseServo ───────────────────────────────────────────────
-    // Drives the servo when closing the gate with a for-loop structure
-    case State::DriveCloseServo: {
-      if (!stepServoToward(SERVO_CLOSED)) return;
-
-      transitionTo(State::IncrementSignal);
-      break;
-    }
-
-    // ── IncrementSignal ─────────────────────────────────────────────────
-    case State::IncrementSignal: {
-      analogWrite(VEHICLE_ENTERED, DAC_HIGH);
-
-      if (!elapsedSince(stateEnteredMs, INCREMENT_SIGNAL_DURATION_MS)) {
-        return;
-      }
-
-      analogWrite(VEHICLE_ENTERED, DAC_LOW);
-      transitionTo(State::Idle);
-      break;
-    }
-
-    // ── At Capacity ─────────────────────────────────────────────────
-    case State::AtCapacity: {
-        setLEDEnabled(LEDColor::Blue, true);
-
-        if (isSpaceFull()) {
-          return;
-        }
-
-        setLEDEnabled(LEDColor::Blue, false);
-
-        transitionTo(State::Idle);
-        break;
-    }
-    
-    // ── Emergency ─────────────────────────────────────────────────
-    case State::Emergency: {
-      servo.write(SERVO_OPEN);
-      disableLEDS();
-      setBuzzer(false);
-      analogWrite(VEHICLE_ENTERED, DAC_LOW); // force low in case emergency interrupted IncrementSignal mid-pulse
-
-      if (!isEmergencyOverrideActive()) {
-        servo.write(SERVO_CLOSED);
-        transitionTo(State::Idle);
-        return;
-      }
-
-      if (!elapsedSince(stateEnteredMs, EMERGENCY_FLASH_DURATION_MS)) {
-        return;
-      }
-
-      transitionTo(State::EmergencyFlash);
-      break;
-    }
-
-    // ── Emergency Flash ─────────────────────────────────────────────────
-    case State::EmergencyFlash: {
-      enableLEDS();
-      setBuzzer(true);
-
-      if (!elapsedSince(stateEnteredMs, EMERGENCY_FLASH_DURATION_MS)) {
-        return;
-      }
-
-      transitionTo(State::Emergency);
-      break;
-    }
-
-    // Fail case
-    default: {
-      Serial.print("ERROR: Unhandled state: ");
-      Serial.println(stateNames[static_cast<int>(currentState)]);
-      transitionTo(State::Idle);
-      break;
-    }
-  }
+  stateHandlers[static_cast<int>(currentState)]();
 }
