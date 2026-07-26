@@ -128,6 +128,9 @@ const unsigned long GATE_HOLD_MS = 3UL * 1000UL;
 /* How long the increment signal is held high for */
 const unsigned long INCREMENT_SIGNAL_DURATION_MS = 100UL;
 
+/* How long the increment signal is held high for */
+const unsigned long EMERGENCY_FLASH_DURATION_MS = 250UL;
+
 /* Distance threshold (cm) under which the ultrasonic sensor considers something present. */
 const float ULTRA_DETECT_CM = 10.0f;
 
@@ -689,7 +692,7 @@ void loop() {
         return;
       }
 
-      if (!elapsedSince(stateEnteredMs, 250)) {
+      if (!elapsedSince(stateEnteredMs, EMERGENCY_FLASH_DURATION_MS)) {
         return;
       }
 
@@ -702,7 +705,7 @@ void loop() {
       enableLEDS();
       setBuzzer(true);
 
-      if (!elapsedSince(stateEnteredMs, 250)) {
+      if (!elapsedSince(stateEnteredMs, EMERGENCY_FLASH_DURATION_MS)) {
         return;
       }
 
