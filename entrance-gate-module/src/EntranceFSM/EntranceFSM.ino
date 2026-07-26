@@ -428,6 +428,27 @@ bool ultrasonicDetected() {
   return reading <= ULTRA_DETECT_CM;
 }
 
+/**
+ * @return true if the emergency override input is asserted.
+ */
+bool isEmergencyOverrideActive() {
+  return analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH;
+}
+
+/**
+ * @return true if the lot has reported itself full.
+ */
+bool isSpaceFull() {
+  return analogRead(SPACE_FULL) >= LOGICAL_HIGH;
+}
+
+/**
+ * @return true if the current plate reading is authorized.
+ */
+bool isPlateAuthorized() {
+  return analogRead(PLATE_AUTHORIZED) >= LOGICAL_HIGH;
+}
+
 /* Setup & Loop ----------------------------------------------------------------- */
 
 
@@ -474,6 +495,10 @@ void loop() {
 
   updateHappyBuzzer();
 
+  if (isEmergencyOverrideActive() && currentState != State::Emergency && currentState != State::EmergencyFlash) {
+    transitionTo(State::Emergency);
+  }
+
   switch (currentState) {
     // ── Idle ─────────────────────────────────────────────────────────
     // Wait for an RFID card to be presented. Self-loops while no scan.
@@ -482,16 +507,11 @@ void loop() {
       setLEDEnabled(LEDColor::Yellow, false);
       setLEDEnabled(LEDColor::Green, false);
 
-      bool currentPlateAuthorized = analogRead(PLATE_AUTHORIZED) >= LOGICAL_HIGH;
-
-      if (analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH) {
-        transitionTo(State::Emergency);
-        return;
-      }
+      bool currentPlateAuthorized = isPlateAuthorized();
 
       if (rfidDetected()) {
         transitionTo(State::Scan);
-      } else if (analogRead(SPACE_FULL) >= LOGICAL_HIGH) {
+      } else if (isSpaceFull()) {
         transitionTo(State::AtCapacity);
       } else if (currentPlateAuthorized && currentPlateAuthorized != lastPlateAuthorized) { // On the rising edge
         transitionTo(State::OpenGate);
@@ -521,12 +541,6 @@ void loop() {
       setLEDEnabled(LEDColor::Red, true);
       setLEDEnabled(LEDColor::Yellow, false);
       setLEDEnabled(LEDColor::Green, false);
-
-      if (analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH) {
-        setBuzzer(false);
-        transitionTo(State::Emergency);
-        return;
-      }
 
       if (now - buzzerStartMs >= BUZZER_DURATION_MS) {
         setBuzzer(false);
@@ -575,11 +589,6 @@ void loop() {
       setLEDEnabled(LEDColor::Green, true);
       setLEDEnabled(LEDColor::Yellow, false);
 
-      if (analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH) {
-        transitionTo(State::Emergency);
-        return;
-      }
-
       if (now - gateOpenedMs >= GATE_HOLD_MS) {
         transitionTo(State::Ultrasense);
       }
@@ -591,11 +600,6 @@ void loop() {
     // Keep gate open while something is detected in front of it.
     // Once the path is clear, transition to Close.
     case State::Ultrasense: {
-      if (analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH) {
-        transitionTo(State::Emergency);
-        return;
-      }
-      
       if (ultrasonicDetected()) {
         // self-loop ("dtced")
         break;
@@ -652,12 +656,7 @@ void loop() {
     case State::AtCapacity: {
         setLEDEnabled(LEDColor::Blue, true);
 
-        if (analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH) {
-          transitionTo(State::Emergency);
-          return;
-        }
-
-        if (analogRead(SPACE_FULL) >= LOGICAL_HIGH) {
+        if (isSpaceFull()) {
           return;
         }
 
@@ -672,8 +671,9 @@ void loop() {
       servo.write(SERVO_OPEN);
       disableLEDS();
       setBuzzer(false);
+      analogWrite(VEHICLE_ENTERED, DAC_LOW); // force low in case emergency interrupted IncrementSignal mid-pulse
 
-      if (analogRead(EMERGENCY_OVERRIDE) < LOGICAL_HIGH) {
+      if (!isEmergencyOverrideActive()) {
         servo.write(SERVO_CLOSED);
         transitionTo(State::Idle);
         return;
