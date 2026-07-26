@@ -404,15 +404,22 @@ void updateHappyBuzzer() {
 }
 
 /**
- * Commands the gate servo to the closed position.
+ * Advances the gate servo one tick toward `target`, respecting GATE_TICK timing.
+ * Intended to be called every loop iteration from a Drive*Servo state.
+ *
+ * @param target the angle to drive toward (SERVO_OPEN or SERVO_CLOSED).
+ * @return true once the servo has reached target; false if still moving.
  */
-void closeGate() {
-  for (int i = SERVO_OPEN; i > SERVO_CLOSED; i--) {
-      servo.write(i);
-      delay(GATE_TICK);
-  }
+bool stepServoToward(const int target) {
+  if (now - gateStepMs < GATE_TICK) return false;
 
-  servo.write(SERVO_CLOSED);
+  gateStepMs = now;
+
+  if (gateAngle == target) return true;
+
+  gateAngle += (gateAngle < target) ? 1 : -1;
+  servo.write(gateAngle);
+  return false;
 }
 
 /**
@@ -567,15 +574,7 @@ void loop() {
     // ── DriveOpenServo ───────────────────────────────────────────────
     // Drives the servo when opening the gate with a for-loop structure
     case State::DriveOpenServo: {
-      if (now - gateStepMs < GATE_TICK) return;
-
-      gateStepMs = now;
-
-      if (gateAngle < SERVO_OPEN) {
-        gateAngle++;
-        servo.write(gateAngle);
-        return;
-      }
+      if (!stepServoToward(SERVO_OPEN)) return;
 
       gateOpenedMs = now;
       transitionTo(State::HoldGateOpen);
@@ -625,15 +624,7 @@ void loop() {
     // ── DriveCloseServo ───────────────────────────────────────────────
     // Drives the servo when closing the gate with a for-loop structure
     case State::DriveCloseServo: {
-      if (now - gateStepMs < GATE_TICK) return;
-
-      gateStepMs = now;
-
-      if (gateAngle > SERVO_CLOSED) {
-        gateAngle--;
-        servo.write(gateAngle);
-        return;
-      }
+      if (!stepServoToward(SERVO_CLOSED)) return;
 
       transitionTo(State::IncrementSignal);
       break;
