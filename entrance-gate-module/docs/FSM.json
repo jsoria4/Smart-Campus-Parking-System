@@ -1,0 +1,365 @@
+{
+  "nodes": [
+    {
+      "x": 236,
+      "y": 495,
+      "text": "Idle",
+      "isAcceptState": true,
+      "textOnly": false
+    },
+    {
+      "x": 937,
+      "y": 414,
+      "text": "open Gate",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 899,
+      "y": 19,
+      "text": "Gate Entrance",
+      "isAcceptState": true,
+      "textOnly": true
+    },
+    {
+      "x": 571,
+      "y": 278,
+      "text": "Scan",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 312,
+      "y": 992,
+      "text": "Increment Signal",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 1493,
+      "y": 258,
+      "text": "hold gate open",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 1441,
+      "y": 1103,
+      "text": "ultrasense",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 1095,
+      "y": 1259,
+      "text": "close Gate",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 195,
+      "y": 258,
+      "text": "Buzzer",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 1226,
+      "y": 278,
+      "text": "drive Open",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 612,
+      "y": 1250,
+      "text": "drive Close",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 541,
+      "y": 923,
+      "text": "At capacity",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 937,
+      "y": 765,
+      "text": "Emergency",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 945,
+      "y": 1093,
+      "text": "Emergency Flash",
+      "isAcceptState": false,
+      "textOnly": false
+    }
+  ],
+  "links": [
+    {
+      "type": "Link",
+      "nodeA": 0,
+      "nodeB": 3,
+      "text": "rfid detected",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.678863640315037,
+      "perpendicularPart": -28.5267004340662
+    },
+    {
+      "type": "Link",
+      "nodeA": 3,
+      "nodeB": 1,
+      "text": "verified",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.312242541914832,
+      "perpendicularPart": -25.0325891543435
+    },
+    {
+      "type": "SelfLink",
+      "node": 5,
+      "text": "wait 15s",
+      "anchorAngle": -0.785398163397448
+    },
+    {
+      "type": "Link",
+      "nodeA": 5,
+      "nodeB": 6,
+      "text": "wait over",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.417748478701826,
+      "perpendicularPart": -66.8294550696676
+    },
+    {
+      "type": "Link",
+      "nodeA": 6,
+      "nodeB": 7,
+      "text": "!dtcted",
+      "lineAngleAdjust": 0,
+      "parallelPart": 0.5,
+      "perpendicularPart": 0
+    },
+    {
+      "type": "Link",
+      "nodeA": 4,
+      "nodeB": 0,
+      "text": "More than 100 ms",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.541065288558546,
+      "perpendicularPart": -52.0228904221971
+    },
+    {
+      "type": "SelfLink",
+      "node": 0,
+      "text": "no rfid scan",
+      "anchorAngle": -2.53996883850994
+    },
+    {
+      "type": "SelfLink",
+      "node": 6,
+      "text": "dtced",
+      "anchorAngle": -2.61878324171307
+    },
+    {
+      "type": "Link",
+      "nodeA": 3,
+      "nodeB": 8,
+      "text": "unverfd",
+      "lineAngleAdjust": 0,
+      "parallelPart": 0.112187447322582,
+      "perpendicularPart": 46.7443334895114
+    },
+    {
+      "type": "Link",
+      "nodeA": 8,
+      "nodeB": 0,
+      "text": "wait buzzer",
+      "lineAngleAdjust": 0,
+      "parallelPart": 0.526601882781658,
+      "perpendicularPart": 11.5496104421983
+    },
+    {
+      "type": "SelfLink",
+      "node": 8,
+      "text": "keep buzzing",
+      "anchorAngle": -1.5707963267949
+    },
+    {
+      "type": "Link",
+      "nodeA": 1,
+      "nodeB": 9,
+      "text": "",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.33877687052158,
+      "perpendicularPart": 0
+    },
+    {
+      "type": "Link",
+      "nodeA": 9,
+      "nodeB": 5,
+      "text": "Opened",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.540306044162982,
+      "perpendicularPart": -30.2784690067227
+    },
+    {
+      "type": "SelfLink",
+      "node": 9,
+      "text": "Gate angle less than open",
+      "anchorAngle": -2.43933572208079
+    },
+    {
+      "type": "Link",
+      "nodeA": 7,
+      "nodeB": 10,
+      "text": "",
+      "lineAngleAdjust": 0,
+      "parallelPart": 0.5,
+      "perpendicularPart": 0
+    },
+    {
+      "type": "Link",
+      "nodeA": 10,
+      "nodeB": 4,
+      "text": "Closed",
+      "lineAngleAdjust": 0,
+      "parallelPart": 0.5,
+      "perpendicularPart": 0
+    },
+    {
+      "type": "SelfLink",
+      "node": 10,
+      "text": "Gate angle greater than closed",
+      "anchorAngle": -1.37790321288221
+    },
+    {
+      "type": "Link",
+      "nodeA": 0,
+      "nodeB": 11,
+      "text": "Full signal",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.46527144309208,
+      "perpendicularPart": -41.3518342751588
+    },
+    {
+      "type": "Link",
+      "nodeA": 11,
+      "nodeB": 0,
+      "text": "!Full signal",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.643066319060034,
+      "perpendicularPart": -69.5000190769111
+    },
+    {
+      "type": "SelfLink",
+      "node": 11,
+      "text": "Full signal",
+      "anchorAngle": 0.323256968508304
+    },
+    {
+      "type": "Link",
+      "nodeA": 0,
+      "nodeB": 1,
+      "text": "Plate Authorized Rising Edge",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.5499491722824,
+      "perpendicularPart": -17.2802912302695
+    },
+    {
+      "type": "SelfLink",
+      "node": 4,
+      "text": "Less than 100 ms",
+      "anchorAngle": 2.19967888940937
+    },
+    {
+      "type": "Link",
+      "nodeA": 12,
+      "nodeB": 13,
+      "text": "Greater than 1000 ms",
+      "lineAngleAdjust": 0,
+      "parallelPart": 0.516483516483517,
+      "perpendicularPart": -36
+    },
+    {
+      "type": "Link",
+      "nodeA": 13,
+      "nodeB": 12,
+      "text": "Greater than 1000 ms",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.516483516483517,
+      "perpendicularPart": -51
+    },
+    {
+      "type": "SelfLink",
+      "node": 13,
+      "text": "Less than 1000 ms",
+      "anchorAngle": 0
+    },
+    {
+      "type": "Link",
+      "nodeA": 12,
+      "nodeB": 0,
+      "text": "Emergency Override Low",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.299434167226356,
+      "perpendicularPart": 0
+    },
+    {
+      "type": "Link",
+      "nodeA": 0,
+      "nodeB": 12,
+      "text": "Emergency Override High",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.898211885005824,
+      "perpendicularPart": -15.8652264019188
+    },
+    {
+      "type": "Link",
+      "nodeA": 11,
+      "nodeB": 12,
+      "text": "Emergency Override High",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.674415735371468,
+      "perpendicularPart": -62.4221960186443
+    },
+    {
+      "type": "Link",
+      "nodeA": 6,
+      "nodeB": 12,
+      "text": "Emergency Override High",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.417431543592854,
+      "perpendicularPart": 106.637491154638
+    },
+    {
+      "type": "Link",
+      "nodeA": 5,
+      "nodeB": 12,
+      "text": "Emergency Override High",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.811637361636223,
+      "perpendicularPart": 0
+    },
+    {
+      "type": "Link",
+      "nodeA": 8,
+      "nodeB": 12,
+      "text": "Emergency Override High",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.273605821312247,
+      "perpendicularPart": -40.7655433580736
+    },
+    {
+      "type": "SelfLink",
+      "node": 12,
+      "text": "Less than 1000 ms",
+      "anchorAngle": 2.6392748252971
+    }
+  ],
+  "nodeRadius": 55,
+  "canvasWidth": 1800,
+  "canvasHeight": 1400
+}

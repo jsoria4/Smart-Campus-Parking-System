@@ -48,10 +48,12 @@ enum class State {
   HoldGateOpen,
   Ultrasense,
   CloseGate,
-  CounterUpMod,
+  IncrementSignal,
   DriveOpenServo,
   DriveCloseServo,
-  Emergency
+  Emergency,
+  EmergencyFlash,
+  AtCapacity,
 };
 
 /* State Names in an Array for simplicity */
@@ -63,16 +65,20 @@ const char* const stateNames[] = {
   "HoldGateOpen",
   "Ultrasense",
   "CloseGate",
-  "CounterUpMod",
+  "IncrementSignal",
   "DriveOpenServo",
-  "DriveCloseServo"
+  "DriveCloseServo",
+  "Emergency",
+  "EmergencyFlash",
+  "AtCapacity",
 };
 
 /* LED Colors */
 enum class LEDColor {
   Red,
   Yellow,
-  Green
+  Green,
+  Blue
 };
 
 /* Arduino R4 Settings -----------------------------------------------------------------*/
@@ -89,11 +95,22 @@ const int SERVO = 3;
 const int ULTRA_ECHO = 4;
 const int ULTRA_TRIG = 2;
 const int BUZZER = 5;
+const int CAPACITY_LED = 1;
 
 /* Analog pins for communication */
-const int VEHICLE_ENTERED = 0;
-const int EMERGENCY_OVERRIDE = 1;
-const int PLATE_AUTHORIZED = 2;
+const int VEHICLE_ENTERED = A0;
+const int EMERGENCY_OVERRIDE = A1;
+const int PLATE_AUTHORIZED = A2;
+const int SPACE_FULL = A3;
+const int LOGICAL_HIGH = 675; // 3.3 Volts, threshold for analogRead() comparisons (10-bit ADC scale)
+const int LOGICAL_LOW = 0; // 0 Volts
+
+/* analogWrite() on the R4's A0 DAC defaults to 8-bit resolution (0-255). Measured full-scale
+ * (255) is ~4.5V on this board rather than the datasheet's 3.3V, so this is scaled down
+ * (255 * 3.3/4.5) to hit 3.3V 
+ */
+const int DAC_HIGH = 175;
+const int DAC_LOW = 0;
 
 /* The baud rate to the serial monitor. */
 const unsigned int BAUD_RATE = 9600;
@@ -107,6 +124,9 @@ const unsigned int INIT_DELAY = 100;
 
 /* How long the gate is held open after opening, in milliseconds. */
 const unsigned long GATE_HOLD_MS = 3UL * 1000UL;
+
+/* How long the increment signal is held high for */
+const unsigned long INCREMENT_SIGNAL_DURATION_MS = 100UL;
 
 /* Distance threshold (cm) under which the ultrasonic sensor considers something present. */
 const float ULTRA_DETECT_CM = 10.0f;
@@ -191,10 +211,6 @@ const AuthorizedUID AUTHORIZED_UIDS[] = {
 
 /* Number of entries in AUTHORIZED_UIDS. */
 const unsigned int AUTHORIZED_UID_COUNT = sizeof(AUTHORIZED_UIDS) / sizeof(AUTHORIZED_UIDS[0]);
-
-/* The int value which an Arduino R4 reads as high voltage */
-const int HIGH_VOLTAGE = 1023;
-
 /* State  ----------------------------------------------------------------- */
 
 
@@ -204,7 +220,7 @@ unsigned long now = 0;
 unsigned long stateEnteredMs = 0;
 unsigned long buzzerStartMs = 0;
 unsigned long gateOpenedMs = 0;
-unsigned long entryCount = 0;
+bool lastPlateAuthorized = false;
 
 /* Happy buzzer sequence tracking. */
 unsigned int happyBuzzerIndex = 0;
@@ -227,16 +243,6 @@ Servo servo;
 /* Ultrasonic sensor class. */
 UltraSonicDistanceSensor distanceSensor(ULTRA_TRIG, ULTRA_ECHO);
 
-/* Helper Functions ----------------------------------------------------------------- */
-
-bool isEmergencyOverrideHigh() {
-  return analogRead(EMERGENCY_OVERRIDE) == HIGH_VOLTAGE;
-}
-
-bool isPlateAuthorizedHigh() {
-  return analogRead(PLATE_AUTHORIZED) == HIGH_VOLTAGE;
-}
-
 /**
  * Resolves an LEDColor enum to its corresponding pin.
  *
@@ -249,6 +255,7 @@ int getLEDPin(const LEDColor LED) {
     case LEDColor::Red:    return RED_LED;
     case LEDColor::Yellow: return YELLOW_LED;
     case LEDColor::Green:  return GREEN_LED;
+    case LEDColor::Blue: return CAPACITY_LED;
     default: return 0;
   }
 }
@@ -270,6 +277,17 @@ void disableLEDS() {
   setLEDEnabled(LEDColor::Red, false);
   setLEDEnabled(LEDColor::Yellow, false);
   setLEDEnabled(LEDColor::Green, false);
+  setLEDEnabled(LEDColor::Blue, false);
+}
+
+/**
+ * Enables all LEDs.
+ */
+void enableLEDS() {
+  setLEDEnabled(LEDColor::Red, true);
+  setLEDEnabled(LEDColor::Yellow, true);
+  setLEDEnabled(LEDColor::Green, true);
+  setLEDEnabled(LEDColor::Blue, true);
 }
 
 /**
@@ -404,6 +422,8 @@ void closeGate() {
  */
 bool ultrasonicDetected() {
   float reading = distanceSensor.measureDistanceCm();
+  Serial.println("Ultra reading:");
+  Serial.println(reading);
 
   return reading <= ULTRA_DETECT_CM;
 }
@@ -425,6 +445,7 @@ void setup() {
   pinMode(RED_LED, OUTPUT);
   pinMode(YELLOW_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
+  pinMode(CAPACITY_LED, OUTPUT);
   pinMode(BUZZER, OUTPUT);
 
   pinMode(ULTRA_TRIG, OUTPUT);
@@ -461,9 +482,21 @@ void loop() {
       setLEDEnabled(LEDColor::Yellow, false);
       setLEDEnabled(LEDColor::Green, false);
 
+      bool currentPlateAuthorized = analogRead(PLATE_AUTHORIZED) >= LOGICAL_HIGH;
+
+      if (analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH) {
+        transitionTo(State::Emergency);
+        return;
+      }
+
       if (rfidDetected()) {
         transitionTo(State::Scan);
+      } else if (analogRead(SPACE_FULL) >= LOGICAL_HIGH) {
+        transitionTo(State::AtCapacity);
+      } else if (currentPlateAuthorized && currentPlateAuthorized != lastPlateAuthorized) { // On the rising edge
+        transitionTo(State::OpenGate);
       }
+      lastPlateAuthorized = currentPlateAuthorized;
       // else: self-loop ("no rfid scan")
       break;
     }
@@ -488,6 +521,12 @@ void loop() {
       setLEDEnabled(LEDColor::Red, true);
       setLEDEnabled(LEDColor::Yellow, false);
       setLEDEnabled(LEDColor::Green, false);
+
+      if (analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH) {
+        setBuzzer(false);
+        transitionTo(State::Emergency);
+        return;
+      }
 
       if (now - buzzerStartMs >= BUZZER_DURATION_MS) {
         setBuzzer(false);
@@ -536,6 +575,11 @@ void loop() {
       setLEDEnabled(LEDColor::Green, true);
       setLEDEnabled(LEDColor::Yellow, false);
 
+      if (analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH) {
+        transitionTo(State::Emergency);
+        return;
+      }
+
       if (now - gateOpenedMs >= GATE_HOLD_MS) {
         transitionTo(State::Ultrasense);
       }
@@ -547,6 +591,11 @@ void loop() {
     // Keep gate open while something is detected in front of it.
     // Once the path is clear, transition to Close.
     case State::Ultrasense: {
+      if (analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH) {
+        transitionTo(State::Emergency);
+        return;
+      }
+      
       if (ultrasonicDetected()) {
         // self-loop ("dtced")
         break;
@@ -582,29 +631,72 @@ void loop() {
         return;
       }
 
-      transitionTo(State::CounterUpMod);
+      transitionTo(State::IncrementSignal);
       break;
     }
 
-    // ── CounterUpMod ─────────────────────────────────────────────────
-    // Increment the entry counter, then return to Idle.
-    case State::CounterUpMod: {
-      entryCount++;
-      Serial.print("Entry count: ");
-      Serial.println(entryCount);
+    // ── IncrementSignal ─────────────────────────────────────────────────
+    case State::IncrementSignal: {
+      analogWrite(VEHICLE_ENTERED, DAC_HIGH);
 
+      if (now - stateEnteredMs < INCREMENT_SIGNAL_DURATION_MS) {
+        return;
+      }
+
+      analogWrite(VEHICLE_ENTERED, DAC_LOW);
       transitionTo(State::Idle);
       break;
+    }
+
+    // ── At Capacity ─────────────────────────────────────────────────
+    case State::AtCapacity: {
+        setLEDEnabled(LEDColor::Blue, true);
+
+        if (analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH) {
+          transitionTo(State::Emergency);
+          return;
+        }
+
+        if (analogRead(SPACE_FULL) >= LOGICAL_HIGH) {
+          return;
+        }
+
+        setLEDEnabled(LEDColor::Blue, false);
+
+        transitionTo(State::Idle);
+        break;
     }
     
     // ── Emergency ─────────────────────────────────────────────────
     case State::Emergency: {
+      servo.write(SERVO_OPEN);
+      disableLEDS();
+      setBuzzer(false);
 
-      if (isEmergencyHigh()) {
+      if (analogRead(EMERGENCY_OVERRIDE) < LOGICAL_HIGH) {
+        servo.write(SERVO_CLOSED);
+        transitionTo(State::Idle);
         return;
       }
 
-      transitionTo(State::Idle);
+      if (now - stateEnteredMs < 250) {
+        return;
+      }
+
+      transitionTo(State::EmergencyFlash);
+      break;
+    }
+
+    // ── Emergency Flash ─────────────────────────────────────────────────
+    case State::EmergencyFlash: {
+      enableLEDS();
+      setBuzzer(true);
+
+      if (now - stateEnteredMs < 250) {
+        return;
+      }
+
+      transitionTo(State::Emergency);
       break;
     }
 

@@ -67,6 +67,7 @@ IDLE ──[tag detected]──► TAG_DETECTED ──► VERIFY_TAG
 (output) vehicle_entered -> A brief signal sent to FSM #1 Space Management & Controller to increment the vehicle count
 (input) emergency_override -> A signal from FSM #3 Safety & Emergency Override to force the gate open for emergency purposes
 (input) plate_authorized -> A signal from the Raspberry Pi 5 AI Model confirming a plate was read
+(input) space_full -> A signal from FSM #1 incidating if there are no more parking spots available
 
 ---
 
