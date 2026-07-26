@@ -229,10 +229,14 @@ unsigned long buzzerStartMs = 0;
 unsigned long gateOpenedMs = 0;
 bool lastPlateAuthorized = false;
 
-/* Happy buzzer sequence tracking. */
-unsigned int happyBuzzerIndex = 0;
-unsigned long happyBuzzerStepMs = 0;
-bool happyBuzzerActive = false;
+/* Happy buzzer sequence tracking. `index`, `stepMs`, and `active` are meaningless
+ * apart from each other — they only make sense together as "where the chirp is right now." */
+struct HappyBuzzer {
+  unsigned int index;
+  unsigned long stepMs;
+  bool active;
+};
+HappyBuzzer happyBuzzer = { 0, 0, false };
 
 /* Gate sequence tracking. `lastStepMs` and `angle` are meaningless apart from
  * each other — they only make sense together as "where the sweep is right now." */
@@ -410,9 +414,9 @@ void setBuzzer(const bool on) {
  * by repeated calls to updateHappyBuzzer().
  */
 void startHappyBuzzer() {
-  happyBuzzerIndex = 0;
-  happyBuzzerActive = true;
-  happyBuzzerStepMs = millis();
+  happyBuzzer.index = 0;
+  happyBuzzer.active = true;
+  happyBuzzer.stepMs = millis();
   tone(BUZZER, HAPPY_BUZZER_SEQUENCE[0].frequencyHz, HAPPY_BUZZER_SEQUENCE[0].durationMs);
 }
 
@@ -422,22 +426,22 @@ void startHappyBuzzer() {
  * current tone plus its trailing gap have elapsed.
  */
 void updateHappyBuzzer() {
-  if (!happyBuzzerActive) return;
+  if (!happyBuzzer.active) return;
 
-  unsigned long stepDuration = HAPPY_BUZZER_SEQUENCE[happyBuzzerIndex].durationMs + HAPPY_BUZZER_GAP_MS;
-  if (millis() - happyBuzzerStepMs < stepDuration) return;
+  unsigned long stepDuration = HAPPY_BUZZER_SEQUENCE[happyBuzzer.index].durationMs + HAPPY_BUZZER_GAP_MS;
+  if (millis() - happyBuzzer.stepMs < stepDuration) return;
 
-  happyBuzzerIndex++;
-  if (happyBuzzerIndex >= HAPPY_BUZZER_LEN) {
-    happyBuzzerActive = false;
+  happyBuzzer.index++;
+  if (happyBuzzer.index >= HAPPY_BUZZER_LEN) {
+    happyBuzzer.active = false;
     noTone(BUZZER);
     return;
   }
 
-  happyBuzzerStepMs = millis();
+  happyBuzzer.stepMs = millis();
   tone(BUZZER,
-       HAPPY_BUZZER_SEQUENCE[happyBuzzerIndex].frequencyHz,
-       HAPPY_BUZZER_SEQUENCE[happyBuzzerIndex].durationMs);
+       HAPPY_BUZZER_SEQUENCE[happyBuzzer.index].frequencyHz,
+       HAPPY_BUZZER_SEQUENCE[happyBuzzer.index].durationMs);
 }
 
 /**
