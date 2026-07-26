@@ -291,6 +291,24 @@ void enableLEDS() {
 }
 
 /**
+ * Shows the "alert" LED pattern (red only) — waiting for a scan, or rejecting one.
+ */
+void showAlertLEDs() {
+  setLEDEnabled(LEDColor::Red, true);
+  setLEDEnabled(LEDColor::Yellow, false);
+  setLEDEnabled(LEDColor::Green, false);
+}
+
+/**
+ * Shows the "transit" LED pattern (yellow only) — the gate is mid-swing.
+ */
+void showTransitLEDs() {
+  setLEDEnabled(LEDColor::Red, false);
+  setLEDEnabled(LEDColor::Yellow, true);
+  setLEDEnabled(LEDColor::Green, false);
+}
+
+/**
  * Transitions the FSM to a new state and records when it was entered.
  *
  * @param next the state to transition to.
@@ -510,9 +528,7 @@ void loop() {
     // ── Idle ─────────────────────────────────────────────────────────
     // Wait for an RFID card to be presented. Self-loops while no scan.
     case State::Idle: {
-      setLEDEnabled(LEDColor::Red, true);
-      setLEDEnabled(LEDColor::Yellow, false);
-      setLEDEnabled(LEDColor::Green, false);
+      showAlertLEDs();
 
       bool currentPlateAuthorized = isPlateAuthorized();
 
@@ -545,9 +561,7 @@ void loop() {
     // ── Buzzer ───────────────────────────────────────────────────────
     // Sound buzzer for BUZZER_DURATION_MS, then return to Idle.
     case State::Buzzer: {
-      setLEDEnabled(LEDColor::Red, true);
-      setLEDEnabled(LEDColor::Yellow, false);
-      setLEDEnabled(LEDColor::Green, false);
+      showAlertLEDs();
 
       if (now - buzzerStartMs >= BUZZER_DURATION_MS) {
         setBuzzer(false);
@@ -560,9 +574,7 @@ void loop() {
     // ── OpenGate ─────────────────────────────────────────────────────
     // Command the gate to open, then move to HoldGateOpen.
     case State::OpenGate: {
-      setLEDEnabled(LEDColor::Red, false);
-      setLEDEnabled(LEDColor::Yellow, true);
-      setLEDEnabled(LEDColor::Green, false);
+      showTransitLEDs();
 
       startHappyBuzzer();
 
@@ -612,9 +624,7 @@ void loop() {
     // ── CloseGate ─────────────────────────────────────────────────────
     // Close the gate and move on to update the counter.
     case State::CloseGate: {
-      setLEDEnabled(LEDColor::Red, false);
-      setLEDEnabled(LEDColor::Yellow, true);
-      setLEDEnabled(LEDColor::Green, false);
+      showTransitLEDs();
 
       gateAngle = SERVO_OPEN;
       transitionTo(State::DriveCloseServo);
