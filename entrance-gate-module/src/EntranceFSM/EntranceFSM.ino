@@ -103,7 +103,7 @@ const int VEHICLE_ENTERED = A0;
 const int EMERGENCY_OVERRIDE = A1;
 const int PLATE_AUTHORIZED = A2;
 const int SPACE_FULL = A3;
-const int LOGICAL_HIGH = 675; // 3.3 Volts, threshold for analogRead() comparisons (10-bit ADC scale)
+const int LOGICAL_HIGH = 650; // 3.3 Volts, threshold for analogRead() comparisons (10-bit ADC scale)
 const int LOGICAL_LOW = 0; // 0 Volts
 
 /* analogWrite() on the R4's A0 DAC defaults to 8-bit resolution (0-255). Measured full-scale
@@ -480,6 +480,7 @@ bool ultrasonicDetected() {
  * @return true if the emergency override input is asserted.
  */
 bool isEmergencyOverrideActive() {
+  Serial.println(analogRead(EMERGENCY_OVERRIDE));
   return analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH;
 }
 
