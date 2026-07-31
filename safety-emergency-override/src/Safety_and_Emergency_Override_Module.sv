@@ -27,7 +27,7 @@ inout  wire [35:0] GPIO_0
 wire buzzer_sig;
 wire flash_leds_sig;
 wire force_gates_cw_sig;
-wire override_all_fsms_sig;
+//wire override_all_fsms_sig;
 wire lcd_evacuate_sig;
 wire polling_active_sig;
 wire [2:0] current_state;
@@ -44,7 +44,8 @@ reg [24:0] blink_ctr;
 
 reg [25:0] slow_ctr;
 reg        slow_clk;
- 
+
+/* 
 always @(posedge CLOCK_50 or negedge KEY[0]) begin
     if (!KEY[0]) begin
         slow_ctr <= 0;
@@ -56,7 +57,7 @@ always @(posedge CLOCK_50 or negedge KEY[0]) begin
         slow_ctr <= slow_ctr + 1;
     end
 end
-
+*/
 always @(posedge CLOCK_50 or negedge KEY[0])
     if (!KEY[0]) blink_ctr <= 0;
     else         blink_ctr <= blink_ctr + 1'b1;
@@ -67,8 +68,8 @@ assign LEDR[1] = flash_leds_sig & blink_ctr[24];
 
 //Instantiation of FSM program
 Emergency_Detect unit0 (
-//.clk				(CLOCK_50),
-.clk            (slow_clk),        // slow clock (testing purposes)
+.clk				(CLOCK_50),
+//.clk            (slow_clk),        // slow clock (testing purposes)
 .resetN         (KEY[0]),
 .flame_sens     (SW[0]),
 .smoke_sens     (SW[1]),
@@ -76,7 +77,7 @@ Emergency_Detect unit0 (
 .buzzer         (buzzer_sig),
 .flash_leds     (flash_leds_sig),
 .force_gates_cw (force_gates_cw_sig),
-.override_all   (override_all_fsms_sig),
+//.override_all   (override_all_fsms_sig),
 .lcd_evacuate   (lcd_evacuate_sig),
 .polling_active (polling_active_sig),
 .current_state  (current_state)      // needed for HEX0 display
@@ -87,7 +88,7 @@ Emergency_Detect unit0 (
 assign LEDR[0] = buzzer_sig;
 //assign LEDR[1] = flash_leds_sig & blink_ctr[24];   //flashing
 assign LEDR[2] = force_gates_cw_sig;
-assign LEDR[3] = override_all_fsms_sig;
+//assign LEDR[3] = override_all_fsms_sig;
 assign LEDR[4] = lcd_evacuate_sig;
 assign LEDR[8:5] = 4'b0;
 assign LEDR[9] = polling_active_sig;
@@ -123,8 +124,9 @@ assign HEX5 = 7'h7F;
 
 assign GPIO_0[0]  = buzzer_sig;            // External buzzer
 assign GPIO_0[1]  = force_gates_cw_sig;    // Gate driver enable
-assign GPIO_0[2]  = override_all_fsms_sig; // Override bus
+//assign GPIO_0[2]  = override_all_fsms_sig; // Override bus
 assign GPIO_0[3]  = lcd_evacuate_sig;      // LCD trigger
+assign GPIO_0[4] = 1'b0;                      // Ground pin
 assign GPIO_0[35:4] = 32'bz;               // Unused pins = high-Z
 
 endmodule

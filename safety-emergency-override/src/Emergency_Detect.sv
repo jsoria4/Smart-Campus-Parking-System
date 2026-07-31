@@ -12,7 +12,7 @@ input  wire m_reset,       	 // Manual reset button
 output reg  buzzer,             // Alarm buzzer
 output reg  flash_leds,         // Flashing LEDs
 output reg  force_gates_cw,     // Force all gates open (cw)
-output reg  override_all,  	// Override signal to all other FSMs
+//output reg  override_all,  	// Override signal to all other FSMs
 output reg  lcd_evacuate,       // Send EVACUATE to LCD
 output reg  polling_active,	//clock signal for time increment of checking
 output wire [2:0] current_state
@@ -85,7 +85,7 @@ always @(*) begin
         buzzer           = 1'b0;
         flash_leds       = 1'b0;
         force_gates_cw   = 1'b0;
-        override_all 	 = 1'b0;
+//        override_all 	 = 1'b0;
         lcd_evacuate     = 1'b0;
         polling_active   = 1'b0;
  
@@ -107,14 +107,14 @@ always @(*) begin
                 buzzer            = 1'b1;   // Keep alarm on
                 flash_leds        = 1'b1;
                 force_gates_cw    = 1'b1;   // Force all gates open
-                override_all 		 = 1'b1;   // Override all other FSMs
+//                override_all 		 = 1'b1;   // Override all other FSMs
             end
  
             DISPLAY_EVAC: begin
                 buzzer            = 1'b1;   // Keep alarm on
                 flash_leds        = 1'b1;
                 force_gates_cw    = 1'b1;   // Keep gates open
-                override_all 		 = 1'b1;
+//                override_all 		 = 1'b1;
                 lcd_evacuate      = 1'b1;   // Self-loop: send EVACUATE to LCD
             end
  
