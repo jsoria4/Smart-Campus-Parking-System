@@ -3,10 +3,12 @@
 ## Module Description
 Continuously monitors environmental conditions (smoke, fire, gas, emergency button) and triggers a system-wide evacuation override when a hazard is detected. Overrides all gate and lighting modules, activates alarms, and displays evacuation instructions.
 
+NOTE: 
+In the Safety_and_Emergency_Override_Module, there are two different commands for the clock, each with a different frequency. CLOCK_50 is the standard 1.5mHz frequency(used for standard polling), and slow_clk is 1Hz (used for testing of states). To use one over the other, simply comment or uncomment out one or the other.
 ---
 
 ## Assigned Member
-[NAME]
+Connor Wickens
 
 ## Language Used
 [e.g. SystemVerilog / Python / C++]
@@ -15,7 +17,16 @@ Continuously monitors environmental conditions (smoke, fire, gas, emergency butt
 [e.g. FPGA DE10-Nano / Arduino Uno / Raspberry Pi]
 
 ## Sensors/Components
-[list here — e.g. smoke sensor, gas sensor, emergency push-button, buzzer/siren, display screen]
+
+//IN
+flame_sens (fire sensor)
+smoke_sens (smoke sensor)
+m_reset (Manual reset button)
+
+//OUT
+buzzer (Alarm buzzer)
+flash_leds (Flashing LEDs)
+lcd_evacuate (Send EVACUATE message to LCD display)
 
 ---
 
@@ -48,7 +59,10 @@ MONITOR_ENVIRONMENT ──[hazard detected]──► EMERGENCY_DETECTED
 ## Interface/Communication
 [how this module talks to others — e.g., broadcasts EMERGENCY signal to entrance-gate-module, exit-gate-module, and adaptive-lighting-efficiency over a dedicated interrupt/GPIO line; sends alert to iot-dashboard-hps]
 
----
+This module receives no external input signals. It has an active poll that monitors for an emergency, and when a sensor is tripped sends an override signal (force_gates_cw) to the entrance and exit gate modules. While high, this signal will override any changes in either system and force the gates open. This state holds until the override signal is turned off by the manual reset button (m_reset).
 
 ## How to Run/Build
 [instructions here]
+This board is run on a DE10 board, using KEY[1] for the manual reset. It currently uses SW[0] and SW[1] for testing of the sensors, but this can be updated to the proper sensors in post. 
+Full function requirements include: 
+DE10, puzzer, smoke sensor, flame sensor, LEDs, LCD display
