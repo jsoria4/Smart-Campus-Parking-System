@@ -1,100 +1,107 @@
 {
   "nodes": [
     {
-      "x": 236,
+      "x": 515,
       "y": 495,
       "text": "Idle",
       "isAcceptState": true,
       "textOnly": false
     },
     {
-      "x": 937,
+      "x": 1216,
       "y": 414,
       "text": "open Gate",
       "isAcceptState": false,
       "textOnly": false
     },
     {
-      "x": 899,
+      "x": 1178,
       "y": 19,
       "text": "Gate Entrance",
       "isAcceptState": true,
       "textOnly": true
     },
     {
-      "x": 571,
+      "x": 850,
       "y": 278,
       "text": "Scan",
       "isAcceptState": false,
       "textOnly": false
     },
     {
-      "x": 312,
+      "x": 591,
       "y": 992,
       "text": "Increment Signal",
       "isAcceptState": false,
       "textOnly": false
     },
     {
-      "x": 1493,
+      "x": 1772,
       "y": 258,
       "text": "hold gate open",
       "isAcceptState": false,
       "textOnly": false
     },
     {
-      "x": 1441,
+      "x": 1720,
       "y": 1103,
       "text": "ultrasense",
       "isAcceptState": false,
       "textOnly": false
     },
     {
-      "x": 1095,
+      "x": 1374,
       "y": 1259,
       "text": "close Gate",
       "isAcceptState": false,
       "textOnly": false
     },
     {
-      "x": 195,
+      "x": 474,
       "y": 258,
       "text": "Buzzer",
       "isAcceptState": false,
       "textOnly": false
     },
     {
-      "x": 1226,
+      "x": 1505,
       "y": 278,
       "text": "drive Open",
       "isAcceptState": false,
       "textOnly": false
     },
     {
-      "x": 612,
+      "x": 891,
       "y": 1250,
       "text": "drive Close",
       "isAcceptState": false,
       "textOnly": false
     },
     {
-      "x": 541,
+      "x": 820,
       "y": 923,
       "text": "At capacity",
       "isAcceptState": false,
       "textOnly": false
     },
     {
-      "x": 937,
+      "x": 1216,
       "y": 765,
       "text": "Emergency",
       "isAcceptState": false,
       "textOnly": false
     },
     {
-      "x": 945,
+      "x": 1224,
       "y": 1093,
       "text": "Emergency Flash",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 185,
+      "y": 690,
+      "text": "Congested",
       "isAcceptState": false,
       "textOnly": false
     }
@@ -357,9 +364,33 @@
       "node": 12,
       "text": "Less than 1000 ms",
       "anchorAngle": 2.6392748252971
+    },
+    {
+      "type": "Link",
+      "nodeA": 0,
+      "nodeB": 14,
+      "text": "Is Congested",
+      "lineAngleAdjust": 0,
+      "parallelPart": 0.708449044422811,
+      "perpendicularPart": 42.9660768848331
+    },
+    {
+      "type": "Link",
+      "nodeA": 14,
+      "nodeB": 0,
+      "text": "!Is Congested",
+      "lineAngleAdjust": 0,
+      "parallelPart": 0.291145422229289,
+      "perpendicularPart": 52.5612315008137
+    },
+    {
+      "type": "SelfLink",
+      "node": 14,
+      "text": "Is Congested",
+      "anchorAngle": 1.74839249407838
     }
   ],
   "nodeRadius": 55,
-  "canvasWidth": 1800,
+  "canvasWidth": 2200,
   "canvasHeight": 1400
 }

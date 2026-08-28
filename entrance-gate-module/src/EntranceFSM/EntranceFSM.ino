@@ -54,6 +54,7 @@ enum class State {
   Emergency,
   EmergencyFlash,
   AtCapacity,
+  Congested,
   Count, // sentinel — must stay last; used to size/validate stateHandlers
 };
 
@@ -72,6 +73,7 @@ const char* const stateNames[] = {
   "Emergency",
   "EmergencyFlash",
   "AtCapacity",
+  "Congested"
 };
 
 /* LED Colors */
@@ -103,6 +105,7 @@ const int VEHICLE_ENTERED = A0;
 const int EMERGENCY_OVERRIDE = A1;
 const int PLATE_AUTHORIZED = A2;
 const int SPACE_FULL = A3;
+const int CONGESTED = A4;
 const int LOGICAL_HIGH = 650; // 3.3 Volts, threshold for analogRead() comparisons (10-bit ADC scale)
 const int LOGICAL_LOW = 0; // 0 Volts
 
@@ -492,6 +495,13 @@ bool isSpaceFull() {
 }
 
 /**
+ * @return true if the lot is congested.
+ */
+bool isCongested() {
+  return analogRead(CONGESTED) >= LOGICAL_HIGH;
+}
+
+/**
  * @return true if the current plate reading is authorized.
  */
 bool isPlateAuthorized() {
@@ -510,12 +520,15 @@ void handleIdle() {
   bool currentPlateAuthorized = isPlateAuthorized();
 
   if (rfidDetected()) {
-    transitionTo(State::Scan);
   } else if (isSpaceFull()) {
     transitionTo(State::AtCapacity);
+  } else if (isCongested()) {
+    transitionTo(State::Congested);
   } else if (currentPlateAuthorized && currentPlateAuthorized != lastPlateAuthorized) { // On the rising edge
     transitionTo(State::OpenGate);
-  }
+  } else if (rfidDetected()) {
+    transitionTo(State::Scan);
+  } 
   lastPlateAuthorized = currentPlateAuthorized;
   // else: self-loop ("no rfid scan")
 }
@@ -664,6 +677,17 @@ void handleEmergencyFlash() {
   transitionTo(State::Emergency);
 }
 
+// ── Congested ─────────────────────────────────────────────────
+void congested() {
+  //TODO Screen state here!
+
+  if (isCongested()) {
+    return;
+  }
+
+  transitionTo(State::Idle);
+}
+
 /* Dispatch table: index = static_cast<int>(State). Order must match the State enum. */
 void (*const stateHandlers[])() = {
   handleIdle,
@@ -679,6 +703,7 @@ void (*const stateHandlers[])() = {
   handleEmergency,
   handleEmergencyFlash,
   handleAtCapacity,
+  congested
 };
 
 static_assert(sizeof(stateHandlers) / sizeof(stateHandlers[0]) == static_cast<int>(State::Count),
