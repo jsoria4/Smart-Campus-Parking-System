@@ -139,13 +139,13 @@ const unsigned long EMERGENCY_FLASH_DURATION_MS = 250UL;
 const float ULTRA_DETECT_CM = 10.0f;
 
 /* Servo value for when the gate is closed. */
-const int SERVO_CLOSED = 90;
+const int SERVO_CLOSED = 130;
 
 /* Servo value for when the gate is open. */
-const int SERVO_OPEN = 180;
+const int SERVO_OPEN = 70;
 
 /* Servo d */
-const float GATE_TICK = 3000.0f / static_cast<float>(SERVO_OPEN - SERVO_CLOSED);
+const float GATE_TICK = 3000.0f / abs(static_cast<float>(SERVO_OPEN - SERVO_CLOSED));
 
 /* Buzzer Settings -------------------------------------------------------- */
 
