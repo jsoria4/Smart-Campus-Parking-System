@@ -10,8 +10,6 @@
  * @author Landon Wardle
  * @date 5/4/2026
  * @version 1.0
- *
- * @note Ultrasonic sensor in my kit is defective, need a new one to mess with.
  */
 
 /*
@@ -37,7 +35,6 @@
 #include <SPI.h>
 #include <MFRC522.h>
 #include <Servo.h>
-#include <HCSR04.h>
 
 /* State Enums */
 enum class State {
@@ -46,7 +43,7 @@ enum class State {
   Buzzer,
   OpenGate,
   HoldGateOpen,
-  Ultrasense,
+  BreakSense,
   CloseGate,
   IncrementSignal,
   DriveOpenServo,
@@ -65,7 +62,7 @@ const char* const stateNames[] = {
   "Buzzer",
   "OpenGate",
   "HoldGateOpen",
-  "Ultrasense",
+  "BreakSense",
   "CloseGate",
   "IncrementSignal",
   "DriveOpenServo",
@@ -95,8 +92,7 @@ const int RED_LED = 8;
 const int YELLOW_LED = 7;
 const int GREEN_LED = 6;
 const int SERVO = 3;
-const int ULTRA_ECHO = 4;
-const int ULTRA_TRIG = 2;
+const int BREAK_BEAM_READ = 2;
 const int BUZZER = 5;
 const int CAPACITY_LED = 1;
 
@@ -134,9 +130,6 @@ const unsigned long INCREMENT_SIGNAL_DURATION_MS = 100UL;
 
 /* How long the emergency flash lights are held on for. */
 const unsigned long EMERGENCY_FLASH_DURATION_MS = 250UL;
-
-/* Distance threshold (cm) under which the ultrasonic sensor considers something present. */
-const float ULTRA_DETECT_CM = 10.0f;
 
 /* Servo value for when the gate is closed. */
 const int SERVO_CLOSED = 130;
@@ -257,9 +250,6 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);
 
 /* Servo class. */
 Servo servo;
-
-/* Ultrasonic sensor class. */
-UltraSonicDistanceSensor distanceSensor(ULTRA_TRIG, ULTRA_ECHO);
 
 /* LEDColor enum value -> pin, indexed by static_cast<int>(LEDColor). */
 const int LED_PINS[] = { RED_LED, YELLOW_LED, GREEN_LED, CAPACITY_LED };
@@ -467,23 +457,18 @@ bool stepServoToward(const int target) {
 }
 
 /**
- * Reads the ultrasonic sensor and reports whether something is in front of the gate.
+ * Reads the Break Beam Sensor
  *
- * @return true if an object is detected within ULTRA_DETECT_CM.
+ * @return true if an object is detected, false otherwise.
  */
-bool ultrasonicDetected() {
-  float reading = distanceSensor.measureDistanceCm();
-  Serial.println("Ultra reading:");
-  Serial.println(reading);
-
-  return reading <= ULTRA_DETECT_CM;
+bool breakBeamDetected() {
+  return digitalRead(BREAK_BEAM_READ) == LOW;
 }
 
 /**
  * @return true if the emergency override input is asserted.
  */
 bool isEmergencyOverrideActive() {
-  Serial.println(analogRead(EMERGENCY_OVERRIDE));
   return analogRead(EMERGENCY_OVERRIDE) >= LOGICAL_HIGH;
 }
 
@@ -586,16 +571,16 @@ void handleHoldGateOpen() {
   setLEDEnabled(LEDColor::Yellow, false);
 
   if (elapsedSince(gateOpenedMs, GATE_HOLD_MS)) {
-    transitionTo(State::Ultrasense);
+    transitionTo(State::BreakSense);
   }
   // else: self-loop ("wait 15s")
 }
 
-// ── Ultrasense ───────────────────────────────────────────────────
+// ── BreakSense ───────────────────────────────────────────────────
 // Keep gate open while something is detected in front of it.
 // Once the path is clear, transition to Close.
-void handleUltrasense() {
-  if (ultrasonicDetected()) {
+void handleBreakSense() {
+  if (breakBeamDetected()) {
     return; // self-loop ("dtced")
   }
 
@@ -695,7 +680,7 @@ void (*const stateHandlers[])() = {
   handleBuzzer,
   handleOpenGate,
   handleHoldGateOpen,
-  handleUltrasense,
+  handleBreakSense,
   handleCloseGate,
   handleIncrementSignal,
   handleDriveOpenServo,
@@ -729,8 +714,7 @@ void setup() {
   pinMode(CAPACITY_LED, OUTPUT);
   pinMode(BUZZER, OUTPUT);
 
-  pinMode(ULTRA_TRIG, OUTPUT);
-  pinMode(ULTRA_ECHO, INPUT);
+  pinMode(BREAK_BEAM_READ, INPUT);
 
   servo.attach(SERVO);
   servo.write(SERVO_CLOSED);
