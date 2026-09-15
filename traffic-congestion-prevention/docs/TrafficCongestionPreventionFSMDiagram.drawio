@@ -1,0 +1,89 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Page-1" id="i4K67z-RrEVTGRSODhbb">
+    <mxGraphModel dx="1656" dy="1197" grid="0" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="550" pageHeight="400" background="light-dark(#FFFFFF,#FFFFFF)" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--2" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;aspect=fixed;fillColor=none;fillStyle=solid;strokeColor=light-dark(#000000,#000000);strokeWidth=1;" value="&lt;span style=&quot;color: light-dark(rgb(0, 0, 0), rgb(0, 0, 0));&quot;&gt;IDLE&lt;/span&gt;" vertex="1">
+          <mxGeometry height="72" width="72" x="-307" y="-131.00444444444446" as="geometry" />
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--3" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;aspect=fixed;fillColor=none;fillStyle=solid;strokeColor=light-dark(#000000,#000000);strokeWidth=1;" value="&lt;span style=&quot;color: light-dark(rgb(0, 0, 0), rgb(0, 0, 0));&quot;&gt;STOP&lt;/span&gt;" vertex="1">
+          <mxGeometry height="72" width="72" x="-143" y="-286.9977777777778" as="geometry" />
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--4" parent="1" style="ellipse;whiteSpace=wrap;html=1;shapeInside=1;fillColor=none;fillStyle=solid;strokeColor=light-dark(#000000,#000000);strokeWidth=1;" value="&lt;span style=&quot;color: light-dark(rgb(0, 0, 0), rgb(0, 0, 0));&quot;&gt;QUEUE_DETECTED&lt;/span&gt;" vertex="1">
+          <mxGeometry height="83.89" width="146" x="-530" y="-303.89" as="geometry" />
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--11" edge="1" parent="1" source="sevmVpZk9rXsbtvGPIZ--2" style="curved=1;endArrow=classic;html=1;rounded=0;exitX=0;exitY=0.5;exitDx=0;exitDy=0;strokeColor=light-dark(#000000,#000000);entryX=0.5;entryY=1;entryDx=0;entryDy=0;" target="sevmVpZk9rXsbtvGPIZ--4" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="-417.9" y="-81.76" />
+            </Array>
+            <mxPoint x="-330" y="-147.22222222222223" as="sourcePoint" />
+            <mxPoint x="-420" y="-16.66666666666663" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--12" connectable="0" parent="sevmVpZk9rXsbtvGPIZ--11" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontColor=light-dark(#000000,#000000);whiteSpace=wrap;labelWidth=100;" value="Both ultrasonic sensors detect an object in front of them" vertex="1">
+          <mxGeometry relative="1" x="0.2876" y="-10" as="geometry">
+            <mxPoint x="-20" y="13" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--13" edge="1" parent="1" source="sevmVpZk9rXsbtvGPIZ--4" style="curved=1;endArrow=classic;html=1;rounded=0;exitX=1;exitY=0;exitDx=0;exitDy=0;entryX=0;entryY=0.5;entryDx=0;entryDy=0;strokeColor=light-dark(#000000,#000000);" target="sevmVpZk9rXsbtvGPIZ--3" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="-254.1" y="-330" />
+            </Array>
+            <mxPoint x="-330" y="192.22222222222229" as="sourcePoint" />
+            <mxPoint x="-240" y="61.66666666666674" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--14" connectable="0" parent="sevmVpZk9rXsbtvGPIZ--13" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];whiteSpace=wrap;labelWidth=100;labelBackgroundColor=none;fontColor=light-dark(#000000,#000000);" value="Objects detected in front of both sensors" vertex="1">
+          <mxGeometry relative="1" x="0.0081" y="-5" as="geometry">
+            <mxPoint x="9" y="-11" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--15" edge="1" parent="1" source="sevmVpZk9rXsbtvGPIZ--3" style="curved=1;endArrow=classic;html=1;rounded=0;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0.5;entryDx=0;entryDy=0;fontColor=light-dark(#000000,#000000);strokeColor=light-dark(#000000,#000000);" target="sevmVpZk9rXsbtvGPIZ--2" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="-131.46" y="-100" />
+            </Array>
+            <mxPoint x="-391.46" y="9.444444444444457" as="sourcePoint" />
+            <mxPoint x="-259.459999999998" y="-74.00444444444452" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--16" connectable="0" parent="sevmVpZk9rXsbtvGPIZ--15" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;whiteSpace=wrap;labelWidth=100;" value="&lt;span style=&quot;color: light-dark(rgb(0, 0, 0), rgb(0, 0, 0));&quot;&gt;Objects not detected by at least one sensor&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.2401" y="-13" as="geometry">
+            <mxPoint x="35" y="28" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--17" edge="1" parent="1" source="sevmVpZk9rXsbtvGPIZ--4" style="curved=1;endArrow=classic;html=1;rounded=0;strokeColor=light-dark(#000000,#000000);exitX=1;exitY=1;exitDx=0;exitDy=0;entryX=0;entryY=0;entryDx=0;entryDy=0;" target="sevmVpZk9rXsbtvGPIZ--2" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="-360" y="-130" />
+            </Array>
+            <mxPoint x="-330" y="61.66666666666674" as="sourcePoint" />
+            <mxPoint x="-240" y="-68.88888888888886" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--20" connectable="0" parent="sevmVpZk9rXsbtvGPIZ--17" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontColor=light-dark(#000000,#000000);whiteSpace=wrap;labelWidth=100;" value="&lt;span style=&quot;white-space: normal;&quot;&gt;Objects not detected by at least one sensor&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.027" y="-6" as="geometry">
+            <mxPoint x="52" y="-47" as="offset" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--18" edge="1" parent="1" source="sevmVpZk9rXsbtvGPIZ--3" style="curved=1;endArrow=classic;html=1;rounded=0;strokeColor=light-dark(#000000,#000000);exitX=0;exitY=1;exitDx=0;exitDy=0;entryX=1;entryY=0;entryDx=0;entryDy=0;labelWidth=100;labelBackgroundColor=none;" target="sevmVpZk9rXsbtvGPIZ--2" value="">
+          <mxGeometry height="50" relative="1" width="50" as="geometry">
+            <Array as="points">
+              <mxPoint x="-140.76" y="-136.05" />
+            </Array>
+            <mxPoint x="-391.46" y="-95" as="sourcePoint" />
+            <mxPoint x="-270.0041558772791" y="-99.46028856716521" as="targetPoint" />
+          </mxGeometry>
+        </mxCell>
+        <mxCell id="sevmVpZk9rXsbtvGPIZ--26" connectable="0" parent="sevmVpZk9rXsbtvGPIZ--18" style="edgeLabel;html=1;align=center;verticalAlign=middle;resizable=0;points=[];labelBackgroundColor=none;fontColor=light-dark(#000000,#000000);whiteSpace=wrap;labelWidth=100;" value="&lt;span style=&quot;white-space: normal;&quot;&gt;Objects not detected by at least one sensor&lt;/span&gt;" vertex="1">
+          <mxGeometry relative="1" x="-0.2966" y="-5" as="geometry">
+            <mxPoint x="-53" y="-11" as="offset" />
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
