@@ -6,16 +6,21 @@ Controls the physical entry gate of the parking lot. Uses RFID/NFC tag detection
 ---
 
 ## Assigned Member
-[NAME]
+Landon
 
 ## Language Used
-[e.g. SystemVerilog / Python / C++]
+C++
 
 ## Hardware/Device
-[e.g. FPGA DE10-Nano / Arduino Uno / Raspberry Pi]
+Arduino Uno
 
 ## Sensors/Components
 [list here — e.g. RFID reader, servo motor, IR sensor, LED indicators]
+Small Servo Motor
+RFID Reader
+LED indicators
+Passive Buzzer
+Ultrasonic Sensor
 
 ---
 
@@ -59,9 +64,15 @@ IDLE ──[tag detected]──► TAG_DETECTED ──► VERIFY_TAG
 ---
 
 ## Interface/Communication
-[how this module talks to others — e.g., reads FULL signal from space-management-counter; sends INCREMENT pulse to space-management-counter on ACCESS_GRANTED; communicates with iot-dashboard-hps over UART/SPI to log entry events]
+(output) vehicle_entered -> A brief signal sent to FSM #1 Space Management & Controller to increment the vehicle count
+(input) emergency_override -> A signal from FSM #3 Safety & Emergency Override to force the gate open for emergency purposes
+(input) plate_authorized -> A signal from the Raspberry Pi 5 AI Model confirming a plate was read
+(input) space_full -> A signal from FSM #1 incidating if there are no more parking spots available
 
 ---
 
 ## How to Run/Build
-[instructions here]
+1. Open EntranceFSM.ino in src folder in Arduino IDE.
+2. Connect an Arduino Uno to your device via USB
+3. Press the arrow in the top left to deploy the code to the Microcontroller
+4. Done!
