@@ -95,6 +95,7 @@ const int SERVO = 3;
 const int BREAK_BEAM_READ = 2;
 const int BUZZER = 5;
 const int CAPACITY_LED = 1;
+const int GATE_OPEN = 4;
 
 /* Analog pins for communication */
 const int VEHICLE_ENTERED = A0;
@@ -102,6 +103,7 @@ const int EMERGENCY_OVERRIDE = A1;
 const int PLATE_AUTHORIZED = A2;
 const int SPACE_FULL = A3;
 const int CONGESTED = A4;
+const int TRIGGER_BUZZER = A5;
 const int LOGICAL_HIGH = 650; // 3.3 Volts, threshold for analogRead() comparisons (10-bit ADC scale)
 const int LOGICAL_LOW = 0; // 0 Volts
 
@@ -487,6 +489,13 @@ bool isCongested() {
 }
 
 /**
+ * @return true if buzzer signal is high.
+ */
+bool isBuzzerSignalHigh() {
+  return analogRead(TRIGGER_BUZZER) >= LOGICAL_HIGH;
+}
+
+/**
  * @return true if the current plate reading is authorized.
  */
 bool isPlateAuthorized() {
@@ -504,6 +513,8 @@ void handleIdle() {
 
   bool currentPlateAuthorized = isPlateAuthorized();
 
+  digitalWrite(GATE_OPEN, LOW);
+
   if (rfidDetected()) {
   } else if (isSpaceFull()) {
     transitionTo(State::AtCapacity);
@@ -513,7 +524,11 @@ void handleIdle() {
     transitionTo(State::OpenGate);
   } else if (rfidDetected()) {
     transitionTo(State::Scan);
-  } 
+  } else if (isBuzzerSignalHigh()) {
+    buzzerStartMs = now;
+    setBuzzer(true);
+    transitionTo(State::Buzzer);
+  }
   lastPlateAuthorized = currentPlateAuthorized;
   // else: self-loop ("no rfid scan")
 }
@@ -549,6 +564,8 @@ void handleOpenGate() {
   showTransitLEDs();
 
   startHappyBuzzer();
+
+  digitalWrite(GATE_OPEN, HIGH);
 
   gateSweep.angle = SERVO_CLOSED;
   transitionTo(State::DriveOpenServo);
@@ -602,6 +619,7 @@ void handleCloseGate() {
 void handleDriveCloseServo() {
   if (!stepServoToward(SERVO_CLOSED)) return;
 
+  digitalWrite(GATE_OPEN, LOW);
   transitionTo(State::IncrementSignal);
 }
 
@@ -636,6 +654,7 @@ void handleEmergency() {
   disableLEDS();
   setBuzzer(false);
   analogWrite(VEHICLE_ENTERED, DAC_LOW); // force low in case emergency interrupted IncrementSignal mid-pulse
+  digitalWrite(GATE_OPEN, HIGH);
 
   if (!isEmergencyOverrideActive()) {
     servo.write(SERVO_CLOSED);
@@ -713,6 +732,7 @@ void setup() {
   pinMode(GREEN_LED, OUTPUT);
   pinMode(CAPACITY_LED, OUTPUT);
   pinMode(BUZZER, OUTPUT);
+  pinMode(GATE_OPEN, OUTPUT);
 
   pinMode(BREAK_BEAM_READ, INPUT);
 
