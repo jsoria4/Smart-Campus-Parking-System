@@ -1,0 +1,152 @@
+{
+  "nodes": [
+    {
+      "x": 895,
+      "y": 56,
+      "text": "Automatic License Plate Reader",
+      "isAcceptState": false,
+      "textOnly": true
+    },
+    {
+      "x": 501,
+      "y": 563,
+      "text": "Init",
+      "isAcceptState": true,
+      "textOnly": false
+    },
+    {
+      "x": 666,
+      "y": 312,
+      "text": "Idle",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 1139,
+      "y": 288,
+      "text": "Take Picture",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 1396,
+      "y": 563,
+      "text": "Verify Plate",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 849,
+      "y": 839,
+      "text": "Open Gate",
+      "isAcceptState": false,
+      "textOnly": false
+    },
+    {
+      "x": 938,
+      "y": 572,
+      "text": "Buzzer",
+      "isAcceptState": false,
+      "textOnly": false
+    }
+  ],
+  "links": [
+    {
+      "type": "StartLink",
+      "node": 1,
+      "text": "Reset",
+      "deltaX": -199,
+      "deltaY": 0
+    },
+    {
+      "type": "Link",
+      "nodeA": 1,
+      "nodeB": 2,
+      "text": "",
+      "lineAngleAdjust": 0,
+      "parallelPart": 0.5,
+      "perpendicularPart": 0
+    },
+    {
+      "type": "SelfLink",
+      "node": 2,
+      "text": "If breaker sensor not broken",
+      "anchorAngle": -2.40161776961392
+    },
+    {
+      "type": "Link",
+      "nodeA": 2,
+      "nodeB": 3,
+      "text": "Breaker sensor broken",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.560803370410825,
+      "perpendicularPart": -44.5980182592452
+    },
+    {
+      "type": "SelfLink",
+      "node": 3,
+      "text": "Picture Processing",
+      "anchorAngle": -1.13095374397916
+    },
+    {
+      "type": "Link",
+      "nodeA": 3,
+      "nodeB": 4,
+      "text": "Picture processed",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.479417536033429,
+      "perpendicularPart": -40.7735396436645
+    },
+    {
+      "type": "Link",
+      "nodeA": 4,
+      "nodeB": 5,
+      "text": "Valid plate",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.671228205708806,
+      "perpendicularPart": -71.3953796527335
+    },
+    {
+      "type": "Link",
+      "nodeA": 4,
+      "nodeB": 6,
+      "text": "Invalid plate",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.595600959032628,
+      "perpendicularPart": -59.257802941246
+    },
+    {
+      "type": "SelfLink",
+      "node": 5,
+      "text": "Gate Open",
+      "anchorAngle": 2.66463968157865
+    },
+    {
+      "type": "Link",
+      "nodeA": 5,
+      "nodeB": 2,
+      "text": "Gate Closed",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.358173370434872,
+      "perpendicularPart": -96.8112307411946
+    },
+    {
+      "type": "SelfLink",
+      "node": 6,
+      "text": "3 second cooldown",
+      "anchorAngle": -1.34467174098303
+    },
+    {
+      "type": "Link",
+      "nodeA": 6,
+      "nodeB": 2,
+      "text": "Cooldown over",
+      "lineAngleAdjust": 3.14159265358979,
+      "parallelPart": 0.281260701744203,
+      "perpendicularPart": -41.5204789902665
+    }
+  ],
+  "nodeRadius": 55,
+  "canvasWidth": 1800,
+  "canvasHeight": 1000
+}
