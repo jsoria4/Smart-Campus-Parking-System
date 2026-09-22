@@ -1,14 +1,8 @@
-"""
-Automatic License Plate Reader FSM
+from enum import Enum;
 
-Implements only the states and transitions shown in the diagram.
-No internal per-state logic (sensor reads, picture taking, plate
-verification, buzzer, or gate control) is implemented -- each state's
-behavior is left as a stub (`pass`) for the caller to fill in.
-"""
-
-from enum import Enum, auto
-
+# Need to expose events to wiring script
+# Expose one for gate opened
+# Expose one for buzzer
 
 class State(Enum):
     INIT = auto()
@@ -18,88 +12,60 @@ class State(Enum):
     BUZZER = auto()
     OPEN_GATE = auto()
 
-
-class Event(Enum):
-    RESET = auto()                     # Init -> Init (entry trigger)
-    BREAKER_SENSOR_OK = auto()         # Idle -> Idle (self loop)
-    BREAKER_SENSOR_BROKEN = auto()     # Idle -> Take Picture
-    PICTURE_PROCESSING = auto()        # Take Picture -> Take Picture (self loop)
-    PICTURE_PROCESSED = auto()         # Take Picture -> Verify Plate
-    VALID_PLATE = auto()               # Verify Plate -> Open Gate
-    INVALID_PLATE = auto()             # Verify Plate -> Buzzer
-    COOLDOWN_TICK = auto()             # Buzzer -> Buzzer (self loop)
-    COOLDOWN_OVER = auto()             # Buzzer -> Idle
-    GATE_OPEN = auto()                 # Open Gate -> Open Gate (self loop)
-    GATE_CLOSED = auto()               # Open Gate -> Idle
-    INIT_DONE = auto()                 # Init -> Idle
-
-
-# Transition table: (current_state, event) -> next_state
-TRANSITIONS = {
-    (State.INIT, Event.RESET): State.INIT,
-    (State.INIT, Event.INIT_DONE): State.IDLE,
-
-    (State.IDLE, Event.BREAKER_SENSOR_OK): State.IDLE,
-    (State.IDLE, Event.BREAKER_SENSOR_BROKEN): State.TAKE_PICTURE,
-
-    (State.TAKE_PICTURE, Event.PICTURE_PROCESSING): State.TAKE_PICTURE,
-    (State.TAKE_PICTURE, Event.PICTURE_PROCESSED): State.VERIFY_PLATE,
-
-    (State.VERIFY_PLATE, Event.VALID_PLATE): State.OPEN_GATE,
-    (State.VERIFY_PLATE, Event.INVALID_PLATE): State.BUZZER,
-
-    (State.BUZZER, Event.COOLDOWN_TICK): State.BUZZER,
-    (State.BUZZER, Event.COOLDOWN_OVER): State.IDLE,
-
-    (State.OPEN_GATE, Event.GATE_OPEN): State.OPEN_GATE,
-    (State.OPEN_GATE, Event.GATE_CLOSED): State.IDLE,
-}
-
-
 class ALPRFSM:
-    def __init__(self):
+    def __init__(
+        self,
+        on_gate_opened, # expect no args, return void
+        on_buzzer_reached, # expect no args, return void
+        initialize_pipeline, # expects no args, initializes pipeline in outside script, return void
+        pipeline_take_picture, # expects no args, take & process picture with YOLO and OCR, then return string text of license plate
+        is_verified_plate # expects a string, returns a boolean if the plate is valid or not
+    ):
         self.state = State.INIT
+        self.on_gate_opened = on_gate_opened
+        self.on_buzzer_reached = on_buzzer_reached
+        self.initialize_pipeline = initialize_pipeline
+        self.pipeline_take_picture = pipeline_take_picture
+        self.is_verified_plate = is_verified_plate
+        self.__init()
 
-    def trigger(self, event: Event) -> State:
-        """Advance the FSM on `event`. Raises ValueError if the event
-        is not valid from the current state."""
-        key = (self.state, event)
-        if key not in TRANSITIONS:
-            raise ValueError(f"No transition for event {event.name} in state {self.state.name}")
-        self.state = TRANSITIONS[key]
+    def get_state():
         return self.state
 
-    # --- Per-state hooks (no logic implemented, left as stubs) ---
+    def __init():
+        if self.state == State.INIT:
+            self.state = State.IDLE
+            # Initialize reader n stuff here
 
-    def on_init(self):
-        pass
+    def breaker_sensor_broken():
+        if self.state == State.IDLE:
+            self.state = State.TAKE_PICTURE
+            self.__take_picture()
 
-    def on_idle(self):
-        pass
+    def __take_picture():
+        if self.state == State.TAKE_PICTURE:
+            # Take picture here, process and send over text
+            self.state = State.VERIFY_PLATE
+            self.__verify_plate()
 
-    def on_take_picture(self):
-        pass
+    def __verify_plate():
+        if self.state == State.VERIFY_PLATE:
+            # Look up plate in database
+            plate_valid = True
+            if (plate_valid):
+                self.state = State.OPEN_GATE
+                self.on_gate_opened()
+                # wait for gate closed to be called
+            else:
+                self.state = State.BUZZER
+                self.__buzzer()
 
-    def on_verify_plate(self):
-        pass
+    def __buzzer():
+        if self.state == State.BUZZER:
+            self.on_buzzer_reached()
+            # Trigger buzzer, wait 3 seconds
+            self.state = State.IDLE
 
-    def on_buzzer(self):
-        pass
-
-    def on_open_gate(self):
-        pass
-
-
-if __name__ == "__main__":
-    fsm = ALPRFSM()
-    print(fsm.state)                              # State.INIT
-    fsm.trigger(Event.INIT_DONE)
-    print(fsm.state)                              # State.IDLE
-    fsm.trigger(Event.BREAKER_SENSOR_BROKEN)
-    print(fsm.state)                              # State.TAKE_PICTURE
-    fsm.trigger(Event.PICTURE_PROCESSED)
-    print(fsm.state)                              # State.VERIFY_PLATE
-    fsm.trigger(Event.VALID_PLATE)
-    print(fsm.state)                              # State.OPEN_GATE
-    fsm.trigger(Event.GATE_CLOSED)
-    print(fsm.state)                              # State.IDLE
+    def close_gate():
+        if self.state == State.OPEN_GATE:
+            self.state = State.IDLE
