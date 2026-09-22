@@ -1,4 +1,4 @@
-from enum import Enum;
+from enum import Enum, auto;
 
 # Need to expose events to wiring script
 # Expose one for gate opened
@@ -29,26 +29,26 @@ class ALPRFSM:
         self.is_verified_plate = is_verified_plate
         self.__init()
 
-    def get_state():
+    def get_state(self):
         return self.state
 
-    def __init():
+    def __init(self):
         if self.state == State.INIT:
             self.state = State.IDLE
             # Initialize reader n stuff here
 
-    def breaker_sensor_broken():
+    def breaker_sensor_broken(self):
         if self.state == State.IDLE:
             self.state = State.TAKE_PICTURE
             self.__take_picture()
 
-    def __take_picture():
+    def __take_picture(self):
         if self.state == State.TAKE_PICTURE:
             # Take picture here, process and send over text
             self.state = State.VERIFY_PLATE
             self.__verify_plate()
 
-    def __verify_plate():
+    def __verify_plate(self):
         if self.state == State.VERIFY_PLATE:
             # Look up plate in database
             plate_valid = True
@@ -60,12 +60,12 @@ class ALPRFSM:
                 self.state = State.BUZZER
                 self.__buzzer()
 
-    def __buzzer():
+    def __buzzer(self):
         if self.state == State.BUZZER:
             self.on_buzzer_reached()
             # Trigger buzzer, wait 3 seconds
             self.state = State.IDLE
 
-    def close_gate():
+    def close_gate(self):
         if self.state == State.OPEN_GATE:
             self.state = State.IDLE
