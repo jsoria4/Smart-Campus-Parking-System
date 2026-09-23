@@ -1,0 +1,9 @@
+Installation (for linux raspberry pi):
+1.) python3 -m venv --system-site-packages [name of virtual environment] 
+2.) cd ./path/to/venv/you/named
+3.) source bin/activate
+4.) cd ../
+5.) pip install easyocr ultralytics opencv-python
+6.) pip install --force-reinstall --no-cache-dir simplejpeg
+
+If your camera is not plugged in you will get an index out of range python error!
