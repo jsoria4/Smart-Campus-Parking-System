@@ -169,3 +169,4 @@ bin/
 *.temp
 *.orig
 *.rej
+./auto-license-plate-reader/ALPRvenv
