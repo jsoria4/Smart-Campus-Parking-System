@@ -6,14 +6,9 @@
 */
 
 
-// Ultrasonic Sensors //
-#define FRONT_TRIGGER 1
-#define FRONT_ECHO 2
-#define REAR_TRIGGER 38
-#define REAR_ECHO 42
-#define ULTRASONIC_SENSOR_PAUSE_TIME_MILLISECONDS 10
-const float MICROSECOND_TO_CENTIMETER_SCALE_FACTOR = 0.0171;
-
+// Beam sensor pins //
+#define FRONT_SENSOR 1
+#define REAR_SENSOR 2
 
 /**
  * LED Output signal
@@ -26,11 +21,7 @@ const float MICROSECOND_TO_CENTIMETER_SCALE_FACTOR = 0.0171;
 #define LED_1 40
 #define LED_0 39
 
-/**
- * The maximal distance in centimeters an object must be within hte sensor to be considered a 
- * vehicle
- */
-#define MAX_TRIGGER_DISTANCE 15
+
 
 /**
  * An enum with all of the state names
@@ -44,10 +35,8 @@ typedef enum state {
 state currentState;
 
 void setup() {
-  pinMode(FRONT_TRIGGER, OUTPUT);
-  pinMode(FRONT_ECHO, INPUT);
-  pinMode(REAR_TRIGGER, OUTPUT);
-  pinMode(REAR_ECHO, INPUT);
+  pinMode(FRONT_SENSOR, INPUT);
+  pinMode(REAR_SENSOR, INPUT);
   pinMode(CONGESTION_SIGNAL, OUTPUT);
   pinMode(LED_1, OUTPUT);
   pinMode(LED_0, OUTPUT);
@@ -57,15 +46,17 @@ void setup() {
 }
 
 void loop() {
-  float frontSensorDistance = ultrasonicMeasure(FRONT_TRIGGER, FRONT_ECHO);
+  // negating the signals coming from the sensors because the breaker beams will turn off
+  // when an item comes between them
+  bool frontSensorTripped = !digitalRead(FRONT_SENSOR); 
   delay(100);
-  float rearSensorDistance = ultrasonicMeasure(REAR_TRIGGER, REAR_ECHO);
+  bool rearSensorTripped = !digitalRead(REAR_SENSOR);
 
   evaluateOutputs();
-  nextState(frontSensorDistance, rearSensorDistance);
+  nextState(frontSensorTripped, rearSensorTripped);
 
-  Serial.println("Front distance: " + static_cast<String>(frontSensorDistance));
-  Serial.println("Rear distance: " + static_cast<String>(rearSensorDistance));
+  Serial.println("Front tripped: " + static_cast<String>(frontSensorTripped));
+  Serial.println("Rear distance: " + static_cast<String>(rearSensorTripped));
   Serial.println(currentState);
 
 
@@ -97,24 +88,24 @@ void evaluateOutputs() {
 /**
  * Changes the current state depending on the input signals FRONT_SENSOR and REAR_SENSOR
  */
-void nextState(float frontDistance, float rearDistance) {
+void nextState(bool frontItemDetected, bool rearItemDetected) {
   switch (currentState) {
     case IDLE:
-      if(frontDistance < MAX_TRIGGER_DISTANCE && rearDistance < MAX_TRIGGER_DISTANCE) {
+      if(frontItemDetected && rearItemDetected) {
         currentState = QUEUE_DETECTED;
       } else {
         currentState = IDLE;
       }
       break;
     case QUEUE_DETECTED:
-      if (rearDistance < MAX_TRIGGER_DISTANCE && frontDistance < MAX_TRIGGER_DISTANCE) {
+      if (frontItemDetected && rearItemDetected) {
         currentState = STOP;
       } else { // considers the IDLE state and case where the passageway clears up. 
         currentState = IDLE;
       }
       break;
     case STOP:
-      if (rearDistance < MAX_TRIGGER_DISTANCE && frontDistance < MAX_TRIGGER_DISTANCE) {
+      if (frontItemDetected && rearItemDetected) {
         currentState = STOP;
       } else {
         currentState = IDLE;
@@ -124,21 +115,4 @@ void nextState(float frontDistance, float rearDistance) {
       currentState = IDLE;
       break;
   }
-}
-
-
-
-float ultrasonicMeasure(uint8_t theTriggerPin, uint8_t theEchoPin) { // from arduino get started
-  // generate 10-microsecond pulse to TRIG pin
-  digitalWrite(theTriggerPin, HIGH);
-  delayMicroseconds(10);
-  digitalWrite(theTriggerPin, LOW);
-
-  // measure duration of pulse from ECHO pin
-  float duration_us = pulseIn(theEchoPin, HIGH);
-
-  // calculate the distance
-  float distance_cm = 0.017 * duration_us;
-
-  return distance_cm;
 }
