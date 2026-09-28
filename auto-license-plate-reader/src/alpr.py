@@ -24,8 +24,8 @@ BUZZER_COOLDOWN_SECONDS = 3
 # already in the beam at boot.
 events = queue.Queue()
 
-beam_pin = DigitalInputDevice(BEAM_PIN, pull_up=True, bounce_time=0.05)
-gate_pin = DigitalInputDevice(GATE_CLOSED_PIN, pull_up=True, bounce_time=0.05)
+beam_pin = DigitalInputDevice(BEAM_PIN, pull_up=False, bounce_time=0.05)
+gate_pin = DigitalInputDevice(GATE_CLOSED_PIN, pull_up=False, bounce_time=0.05)
 open_gate_pin = DigitalOutputDevice(GATE_OPENED_PIN)
 buzzer_pin = DigitalOutputDevice(BUZZER_PIN)
 
@@ -37,20 +37,24 @@ gate_pin.when_activated = lambda: events.put("close_gate")
 pipeline = None
 
 def init_pipeline():
+    print("Init Pipeline...")
     global pipeline
     pipeline = Pipeline(model="../best50_ncnn_model")
 
 def pipeline_take_picture():
+    print("Taking pictre!")
     return pipeline.take_picture()
 
 # Stub
 def is_verified_plate(plate):
-    return True
+    print("Verifying plate")
+    return False
 
 def is_beam_broken():
     return beam_pin.is_active
 
 def on_state_changed(state):
+    print(f"FSM state changed to {state.name}")
     # Outputs follow state only: each pin is high in exactly one state
     open_gate_pin.value = state == State.OPEN_GATE
     buzzer_pin.value = state == State.BUZZER
@@ -59,6 +63,7 @@ def on_buzzer_reached():
     # The FSM stays in BUZZER (buzzer pin high) until this returns
     time.sleep(BUZZER_COOLDOWN_SECONDS)
 
+print("Constructing fsm...")
 FSM = ALPRFSM(
     on_state_changed = on_state_changed,
     on_buzzer_reached = on_buzzer_reached,
@@ -67,6 +72,7 @@ FSM = ALPRFSM(
     is_verified_plate = is_verified_plate,
     is_beam_broken = is_beam_broken,
 )
+print("FSM constructed!")
 
 # Blocking event queue: sleeps until a GPIO edge queues an event
 while True:
