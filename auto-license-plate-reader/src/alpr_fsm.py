@@ -35,7 +35,8 @@ class ALPRFSM:
         on_buzzer_reached, # expect no args, return void
         initialize_pipeline, # expects no args, initializes pipeline in outside script, return void
         pipeline_take_picture, # expects no args, take & process picture with YOLO and OCR, then return string text of license plate
-        is_verified_plate # expects a string, returns a boolean if the plate is valid or not
+        is_verified_plate, # expects a string, returns a boolean if the plate is valid or not
+        is_beam_broken # expects no args, returns a boolean for the beam's current level
     ):
         # Validate everything before touching the pipeline
         _check_callable("on_gate_opened", on_gate_opened)
@@ -43,6 +44,7 @@ class ALPRFSM:
         _check_callable("initialize_pipeline", initialize_pipeline)
         _check_callable("pipeline_take_picture", pipeline_take_picture)
         _check_callable("is_verified_plate", is_verified_plate, "plate")
+        _check_callable("is_beam_broken", is_beam_broken)
 
         self.state = State.INIT
         self.last_plate = ""
@@ -51,6 +53,7 @@ class ALPRFSM:
         self.initialize_pipeline = initialize_pipeline
         self.pipeline_take_picture = pipeline_take_picture
         self.is_verified_plate = is_verified_plate
+        self.is_beam_broken = is_beam_broken
         self.__init()
 
     def get_state(self):
@@ -61,9 +64,23 @@ class ALPRFSM:
             self.state = State.IDLE
             self.initialize_pipeline()
             # Initialize reader n stuff here
+            # Entering IDLE at boot checks the beam like any other entry
+            self.breaker_sensor_broken()
+
+    def __read_beam(self):
+        broken = self.is_beam_broken()
+        # Strict check: 1/0 or "True" should not start a cycle
+        if type(broken) is not bool:
+            raise TypeError(
+                f"is_beam_broken must return bool, got {type(broken).__name__}"
+            )
+        return broken
 
     def breaker_sensor_broken(self):
-        if self.state == State.IDLE:
+        # IDLE is left whenever the beam is broken, so this is a nudge to go
+        # check it. Loop instead of recursing so a car parked in the beam
+        # re-triggers once per cycle without growing the stack.
+        while self.state == State.IDLE and self.__read_beam():
             self.state = State.TAKE_PICTURE
             self.__take_picture()
 
@@ -108,3 +125,4 @@ class ALPRFSM:
     def close_gate(self):
         if self.state == State.OPEN_GATE:
             self.state = State.IDLE
+            self.breaker_sensor_broken()
