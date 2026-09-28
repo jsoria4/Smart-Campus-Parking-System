@@ -1,9 +1,8 @@
 from enum import Enum, auto;
 import inspect
 
-# Need to expose events to wiring script
-# Expose one for gate opened
-# Expose one for buzzer
+# Outputs are a function of state only (Moore machine): the wiring script
+# drives its pins from on_state_changed, e.g. gate high only in OPEN_GATE
 
 class State(Enum):
     INIT = auto()
@@ -31,7 +30,7 @@ def _check_callable(name, fn, *sample_args):
 class ALPRFSM:
     def __init__(
         self,
-        on_gate_opened, # expect no args, return void
+        on_state_changed, # expects the new State, called after every change of state, return void
         on_buzzer_reached, # expect no args, return void
         initialize_pipeline, # expects no args, initializes pipeline in outside script, return void
         pipeline_take_picture, # expects no args, take & process picture with YOLO and OCR, then return string text of license plate
@@ -39,7 +38,7 @@ class ALPRFSM:
         is_beam_broken # expects no args, returns a boolean for the beam's current level
     ):
         # Validate everything before touching the pipeline
-        _check_callable("on_gate_opened", on_gate_opened)
+        _check_callable("on_state_changed", on_state_changed, State.IDLE)
         _check_callable("on_buzzer_reached", on_buzzer_reached)
         _check_callable("initialize_pipeline", initialize_pipeline)
         _check_callable("pipeline_take_picture", pipeline_take_picture)
@@ -48,7 +47,7 @@ class ALPRFSM:
 
         self.state = State.INIT
         self.last_plate = ""
-        self.on_gate_opened = on_gate_opened
+        self.on_state_changed = on_state_changed
         self.on_buzzer_reached = on_buzzer_reached
         self.initialize_pipeline = initialize_pipeline
         self.pipeline_take_picture = pipeline_take_picture
@@ -59,9 +58,16 @@ class ALPRFSM:
     def get_state(self):
         return self.state
 
+    def __set_state(self, new_state):
+        # Every transition goes through here so outputs can't drift from state.
+        # State is set first so the callback can call get_state()
+        if new_state != self.state:
+            self.state = new_state
+            self.on_state_changed(new_state)
+
     def __init(self):
         if self.state == State.INIT:
-            self.state = State.IDLE
+            self.__set_state(State.IDLE)
             self.initialize_pipeline()
             # Initialize reader n stuff here
             # Entering IDLE at boot checks the beam like any other entry
@@ -81,7 +87,7 @@ class ALPRFSM:
         # check it. Loop instead of recursing so a car parked in the beam
         # re-triggers once per cycle without growing the stack.
         while self.state == State.IDLE and self.__read_beam():
-            self.state = State.TAKE_PICTURE
+            self.__set_state(State.TAKE_PICTURE)
             self.__take_picture()
 
     def __take_picture(self):
@@ -89,12 +95,12 @@ class ALPRFSM:
             # Take picture here, process and send over text
             plate = self.pipeline_take_picture()
             if not isinstance(plate, str):
-                self.state = State.IDLE
+                self.__set_state(State.IDLE)
                 raise TypeError(
                     f"pipeline_take_picture must return str, got {type(plate).__name__}"
                 )
             self.last_plate = plate
-            self.state = State.VERIFY_PLATE
+            self.__set_state(State.VERIFY_PLATE)
             self.__verify_plate()
 
     def __verify_plate(self):
@@ -104,25 +110,24 @@ class ALPRFSM:
             plate_valid = self.is_verified_plate(self.last_plate)
             # Strict check: 1/0 or "True" should not open the gate
             if type(plate_valid) is not bool:
-                self.state = State.IDLE
+                self.__set_state(State.IDLE)
                 raise TypeError(
                     f"is_verified_plate must return bool, got {type(plate_valid).__name__}"
                 )
             if (plate_valid):
-                self.state = State.OPEN_GATE
-                self.on_gate_opened()
+                self.__set_state(State.OPEN_GATE)
                 # wait for gate closed to be called
             else:
-                self.state = State.BUZZER
+                self.__set_state(State.BUZZER)
                 self.__buzzer()
 
     def __buzzer(self):
         if self.state == State.BUZZER:
             self.on_buzzer_reached()
             # Trigger buzzer, wait 3 seconds
-            self.state = State.IDLE
+            self.__set_state(State.IDLE)
 
     def close_gate(self):
         if self.state == State.OPEN_GATE:
-            self.state = State.IDLE
+            self.__set_state(State.IDLE)
             self.breaker_sensor_broken()

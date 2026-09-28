@@ -5,7 +5,7 @@ Run from this directory with:  python -m unittest test_alpr_fsm -v
 (pytest also collects these:    pytest test_alpr_fsm.py -v)
 
 Contracts under test (from the ALPRFSM constructor):
-    on_gate_opened        no args, returns None
+    on_state_changed      one State arg, returns None
     on_buzzer_reached     no args, returns None
     initialize_pipeline   no args, returns None
     pipeline_take_picture no args, returns str (license plate text)
@@ -25,6 +25,12 @@ TAKE_PICTURE -> VERIFY_PLATE -> (OPEN_GATE | BUZZER) before returning.
 Every event that has no arrow out of the current state (the self-loops in the
 diagram) is ignored: no state change and no injected function is called.
 
+Outputs are a function of state only (Moore machine). on_state_changed(new)
+fires after every change of state, including INIT -> IDLE at construction and
+the reset to IDLE after a contract violation, and never for a non-change. The
+wiring script drives the gate pin high only in OPEN_GATE and the buzzer pin
+high only in BUZZER; the harness models those two pins the same way.
+
 IDLE is level-triggered on the beam: IDLE is left whenever is_beam_broken()
 is True. breaker_sensor_broken() is a nudge to go check the beam (a stale
 edge with the beam clear does nothing), and re-entering IDLE from BUZZER or
@@ -40,7 +46,7 @@ from alpr_fsm import ALPRFSM, State
 
 
 CONSTRUCTOR_ARGS = (
-    "on_gate_opened",
+    "on_state_changed",
     "on_buzzer_reached",
     "initialize_pipeline",
     "pipeline_take_picture",
@@ -56,6 +62,10 @@ class Harness:
     calls        ordered list of the injected function names that were called
                  (is_beam_broken is not recorded, it is a read not an action)
     states       fsm.get_state() as observed *inside* each injected function
+    transitions  every State passed to on_state_changed, in order
+    stale_state  States where on_state_changed ran before get_state() agreed
+    gate_out     the modeled gate pin, True only in OPEN_GATE
+    buzzer_out   the modeled buzzer pin, True only in BUZZER
     plate        what pipeline_take_picture returns
     valid        what is_verified_plate returns
     plate_seen   the argument is_verified_plate received
@@ -78,6 +88,10 @@ class Harness:
         self.max_pictures = max_pictures
         self.calls = []
         self.states = {}
+        self.transitions = []
+        self.stale_state = []
+        self.gate_out = False
+        self.buzzer_out = False
         self.plate_seen = None
         self.hooks = {}
         self.fsm = None
@@ -96,18 +110,28 @@ class Harness:
     def count(self, name):
         return self.calls.count(name)
 
+    def entered(self, state):
+        return self.transitions.count(state)
+
     def car_arrives(self):
         # What the wiring script does on a falling edge of the beam
         self.beam_broken = True
         self.fsm.breaker_sensor_broken()
 
-    def on_gate_opened(self):
-        # Clear before _record so a hook can put the car back
-        if self.car_leaves:
+    def on_state_changed(self, new_state):
+        # Not in calls: it fires on every transition and would drown out the
+        # sequence of real actions
+        self.transitions.append(new_state)
+        # self.fsm is None while the constructor is still running
+        if self.fsm and self.fsm.get_state() != new_state:
+            self.stale_state.append(new_state)
+        self.gate_out = new_state == State.OPEN_GATE
+        self.buzzer_out = new_state == State.BUZZER
+        if new_state == State.OPEN_GATE and self.car_leaves:
             self.beam_broken = False
-        self._record("on_gate_opened")
 
     def on_buzzer_reached(self):
+        # Clear before _record so a hook can put the car back
         if self.car_leaves:
             self.beam_broken = False
         self._record("on_buzzer_reached")
@@ -168,7 +192,7 @@ class TestConstructorValidation(unittest.TestCase):
             ALPRFSM()
 
     def test_no_arg_callables_that_require_an_argument_are_rejected(self):
-        for name in ("on_gate_opened", "on_buzzer_reached",
+        for name in ("on_buzzer_reached",
                      "initialize_pipeline", "pipeline_take_picture",
                      "is_beam_broken"):
             with self.subTest(argument=name):
@@ -189,13 +213,25 @@ class TestConstructorValidation(unittest.TestCase):
         with self.assertRaises(TypeError):
             ALPRFSM(**kwargs)
 
+    def test_on_state_changed_that_takes_no_argument_is_rejected(self):
+        kwargs = good_kwargs()
+        kwargs["on_state_changed"] = lambda: None
+        with self.assertRaises(TypeError):
+            ALPRFSM(**kwargs)
+
+    def test_on_state_changed_that_needs_two_arguments_is_rejected(self):
+        kwargs = good_kwargs()
+        kwargs["on_state_changed"] = lambda state, extra: None
+        with self.assertRaises(TypeError):
+            ALPRFSM(**kwargs)
+
     def test_invalid_argument_is_rejected_before_initializing_pipeline(self):
         # Validation must happen up front so a bad wiring script does not
         # leave a half-initialized pipeline behind.
         pipeline_inits = []
         kwargs = good_kwargs()
         kwargs["initialize_pipeline"] = lambda: pipeline_inits.append(1)
-        kwargs["on_gate_opened"] = None
+        kwargs["on_state_changed"] = None
         with self.assertRaises(TypeError):
             ALPRFSM(**kwargs)
         self.assertEqual(pipeline_inits, [])
@@ -216,9 +252,12 @@ class TestReturnContractViolations(unittest.TestCase):
                 with self.assertRaises(TypeError):
                     h.car_arrives()
                 self.assertEqual(h.count("is_verified_plate"), 0)
-                self.assertEqual(h.count("on_gate_opened"), 0)
+                self.assertEqual(h.entered(State.OPEN_GATE), 0)
                 self.assertEqual(h.count("on_buzzer_reached"), 0)
                 self.assertEqual(h.fsm.get_state(), State.IDLE)
+                self.assertEqual(h.transitions[-1], State.IDLE)
+                self.assertFalse(h.gate_out)
+                self.assertFalse(h.buzzer_out)
 
     def test_is_verified_plate_returning_non_bool_raises(self):
         for bad in (None, "True", "yes", 1, 0, [], [True]):
@@ -226,9 +265,12 @@ class TestReturnContractViolations(unittest.TestCase):
                 h = Harness(valid=bad)
                 with self.assertRaises(TypeError):
                     h.car_arrives()
-                self.assertEqual(h.count("on_gate_opened"), 0)
+                self.assertEqual(h.entered(State.OPEN_GATE), 0)
                 self.assertEqual(h.count("on_buzzer_reached"), 0)
                 self.assertEqual(h.fsm.get_state(), State.IDLE)
+                self.assertEqual(h.transitions[-1], State.IDLE)
+                self.assertFalse(h.gate_out)
+                self.assertFalse(h.buzzer_out)
 
     def test_fsm_recovers_after_a_contract_violation(self):
         h = Harness(plate=None)
@@ -239,7 +281,7 @@ class TestReturnContractViolations(unittest.TestCase):
         h.valid = True
         h.car_arrives()
         self.assertEqual(h.fsm.get_state(), State.OPEN_GATE)
-        self.assertEqual(h.count("on_gate_opened"), 1)
+        self.assertEqual(h.entered(State.OPEN_GATE), 1)
 
     def test_empty_string_is_a_valid_plate_and_is_forwarded(self):
         # "" satisfies the "returns a string" contract; whether it is a
@@ -287,8 +329,14 @@ class TestInit(unittest.TestCase):
     def test_construction_does_not_take_a_picture_or_fire_outputs(self):
         h = Harness()
         for name in ("pipeline_take_picture", "is_verified_plate",
-                     "on_gate_opened", "on_buzzer_reached"):
+                     "on_buzzer_reached"):
             self.assertEqual(h.count(name), 0, name)
+        self.assertFalse(h.gate_out)
+        self.assertFalse(h.buzzer_out)
+
+    def test_init_to_idle_is_reported(self):
+        # Lets the wiring script drive both pins low at boot
+        self.assertEqual(Harness().transitions, [State.IDLE])
 
 
 class TestIdle(unittest.TestCase):
@@ -305,6 +353,7 @@ class TestIdle(unittest.TestCase):
         h.fsm.close_gate()
         self.assertEqual(h.fsm.get_state(), State.IDLE)
         self.assertEqual(h.calls, ["initialize_pipeline"])
+        self.assertEqual(h.transitions, [State.IDLE])
 
     def test_sensor_broken_takes_exactly_one_picture(self):
         h = Harness()
@@ -365,18 +414,24 @@ class TestValidPlate(unittest.TestCase):
     def test_state_is_open_gate(self):
         self.assertEqual(self.h.fsm.get_state(), State.OPEN_GATE)
 
-    def test_gate_opened_callback_fires_exactly_once(self):
-        self.assertEqual(self.h.count("on_gate_opened"), 1)
+    def test_open_gate_is_entered_exactly_once(self):
+        self.assertEqual(self.h.entered(State.OPEN_GATE), 1)
 
-    def test_gate_opened_callback_sees_open_gate_state(self):
-        self.assertEqual(self.h.states["on_gate_opened"], State.OPEN_GATE)
+    def test_transitions_are_reported_in_order(self):
+        self.assertEqual(self.h.transitions, [
+            State.IDLE,
+            State.TAKE_PICTURE,
+            State.VERIFY_PLATE,
+            State.OPEN_GATE,
+        ])
+
+    def test_gate_pin_high_and_buzzer_pin_low(self):
+        self.assertTrue(self.h.gate_out)
+        self.assertFalse(self.h.buzzer_out)
 
     def test_buzzer_does_not_fire(self):
         self.assertEqual(self.h.count("on_buzzer_reached"), 0)
-
-    def test_gate_opens_after_verification(self):
-        self.assertLess(self.h.calls.index("is_verified_plate"),
-                        self.h.calls.index("on_gate_opened"))
+        self.assertEqual(self.h.entered(State.BUZZER), 0)
 
 
 class TestOpenGate(unittest.TestCase):
@@ -392,11 +447,17 @@ class TestOpenGate(unittest.TestCase):
             self.assertEqual(self.h.fsm.get_state(), State.OPEN_GATE)
         self.assertEqual(self.h.count("pipeline_take_picture"), 1)
         self.assertEqual(self.h.count("is_verified_plate"), 1)
-        self.assertEqual(self.h.count("on_gate_opened"), 1)
+        self.assertEqual(self.h.entered(State.OPEN_GATE), 1)
 
     def test_close_gate_returns_to_idle(self):
         self.h.fsm.close_gate()
         self.assertEqual(self.h.fsm.get_state(), State.IDLE)
+
+    def test_close_gate_reports_idle_and_drops_gate_pin(self):
+        self.h.fsm.close_gate()
+        self.assertEqual(self.h.transitions[-2:],
+                         [State.OPEN_GATE, State.IDLE])
+        self.assertFalse(self.h.gate_out)
 
     def test_close_gate_fires_no_callbacks(self):
         before = list(self.h.calls)
@@ -406,9 +467,11 @@ class TestOpenGate(unittest.TestCase):
     def test_second_close_gate_is_ignored(self):
         self.h.fsm.close_gate()
         before = list(self.h.calls)
+        transitions_before = list(self.h.transitions)
         self.h.fsm.close_gate()
         self.assertEqual(self.h.fsm.get_state(), State.IDLE)
         self.assertEqual(self.h.calls, before)
+        self.assertEqual(self.h.transitions, transitions_before)
 
     def test_new_car_is_handled_after_gate_closes(self):
         self.h.fsm.close_gate()
@@ -430,8 +493,31 @@ class TestInvalidPlate(unittest.TestCase):
     def test_buzzer_callback_sees_buzzer_state(self):
         self.assertEqual(self.h.states["on_buzzer_reached"], State.BUZZER)
 
+    def test_transitions_are_reported_in_order(self):
+        self.assertEqual(self.h.transitions, [
+            State.IDLE,
+            State.TAKE_PICTURE,
+            State.VERIFY_PLATE,
+            State.BUZZER,
+            State.IDLE,
+        ])
+
+    def test_buzzer_pin_is_high_during_cooldown(self):
+        # The cooldown runs inside on_buzzer_reached, so the pin must already
+        # be high when it is called
+        h = Harness(valid=False)
+        seen = {}
+        h.hooks["on_buzzer_reached"] = lambda: seen.update(
+            buzzer=h.buzzer_out, gate=h.gate_out)
+        h.car_arrives()
+        self.assertEqual(seen, {"buzzer": True, "gate": False})
+
+    def test_buzzer_pin_drops_after_cooldown(self):
+        self.assertFalse(self.h.buzzer_out)
+        self.assertFalse(self.h.gate_out)
+
     def test_gate_does_not_open(self):
-        self.assertEqual(self.h.count("on_gate_opened"), 0)
+        self.assertEqual(self.h.entered(State.OPEN_GATE), 0)
 
     def test_returns_to_idle_once_buzzer_callback_returns(self):
         self.assertEqual(self.h.fsm.get_state(), State.IDLE)
@@ -458,6 +544,7 @@ class TestInvalidPlate(unittest.TestCase):
         self.assertEqual(h.count("pipeline_take_picture"), 1)
         self.assertEqual(h.count("on_buzzer_reached"), 1)
         self.assertEqual(h.fsm.get_state(), State.IDLE)
+        self.assertEqual(h.entered(State.BUZZER), 1)
 
     def test_close_gate_after_buzzer_is_ignored(self):
         before = list(self.h.calls)
@@ -486,7 +573,6 @@ class TestFullPaths(unittest.TestCase):
             "initialize_pipeline",
             "pipeline_take_picture",
             "is_verified_plate",
-            "on_gate_opened",
         ])
         self.assertEqual(h.fsm.get_state(), State.IDLE)
 
@@ -516,7 +602,7 @@ class TestFullPaths(unittest.TestCase):
         self.assertEqual(h.count("initialize_pipeline"), 1)
         self.assertEqual(h.count("pipeline_take_picture"), 3)
         self.assertEqual(h.count("is_verified_plate"), 3)
-        self.assertEqual(h.count("on_gate_opened"), 2)
+        self.assertEqual(h.entered(State.OPEN_GATE), 2)
         self.assertEqual(h.count("on_buzzer_reached"), 1)
         self.assertEqual(h.fsm.get_state(), State.IDLE)
 
@@ -545,9 +631,11 @@ class TestBeamLevel(unittest.TestCase):
     def test_stale_nudge_after_buzzer_is_ignored(self):
         h = Harness(valid=False)
         h.car_arrives()
+        before = list(h.transitions)
         h.fsm.breaker_sensor_broken()  # edge queued during the cycle
         self.assertEqual(h.count("pipeline_take_picture"), 1)
         self.assertEqual(h.fsm.get_state(), State.IDLE)
+        self.assertEqual(h.transitions, before)
 
     def test_car_present_at_boot_is_handled_during_construction(self):
         # INIT -> IDLE is an entry into IDLE like any other, so it checks
@@ -557,9 +645,15 @@ class TestBeamLevel(unittest.TestCase):
             "initialize_pipeline",
             "pipeline_take_picture",
             "is_verified_plate",
-            "on_gate_opened",
         ])
         self.assertEqual(h.fsm.get_state(), State.OPEN_GATE)
+        self.assertEqual(h.transitions, [
+            State.IDLE,
+            State.TAKE_PICTURE,
+            State.VERIFY_PLATE,
+            State.OPEN_GATE,
+        ])
+        self.assertTrue(h.gate_out)
 
     def test_unverified_car_present_at_boot_ends_idle_once_it_leaves(self):
         h = Harness(beam_broken=True, valid=False)
@@ -593,6 +687,25 @@ class TestBeamLevel(unittest.TestCase):
         self.assertEqual(h.count("on_buzzer_reached"), 2)
         self.assertEqual(h.fsm.get_state(), State.IDLE)
 
+    def test_retry_passes_through_idle_and_drops_the_buzzer(self):
+        # A retry is a real BUZZER -> IDLE -> TAKE_PICTURE, so the buzzer pin
+        # goes low between cycles instead of staying high
+        h = Harness(valid=False, car_leaves=False)
+        h.hooks["on_buzzer_reached"] = lambda: setattr(h, "valid", True)
+        h.car_arrives()
+        self.assertEqual(h.transitions, [
+            State.IDLE,
+            State.TAKE_PICTURE,
+            State.VERIFY_PLATE,
+            State.BUZZER,
+            State.IDLE,
+            State.TAKE_PICTURE,
+            State.VERIFY_PLATE,
+            State.OPEN_GATE,
+        ])
+        self.assertTrue(h.gate_out)
+        self.assertFalse(h.buzzer_out)
+
     def test_misread_is_retried_and_gate_opens(self):
         h = Harness(valid=False, car_leaves=False)
         h.hooks["on_buzzer_reached"] = lambda: setattr(h, "valid", True)
@@ -604,7 +717,6 @@ class TestBeamLevel(unittest.TestCase):
             "on_buzzer_reached",
             "pipeline_take_picture",
             "is_verified_plate",
-            "on_gate_opened",
         ])
         self.assertEqual(h.fsm.get_state(), State.OPEN_GATE)
 
@@ -612,8 +724,15 @@ class TestBeamLevel(unittest.TestCase):
         h = Harness(valid=True, car_leaves=False)
         h.car_arrives()
         h.fsm.close_gate()
+        self.assertEqual(h.transitions[3:], [
+            State.OPEN_GATE,
+            State.IDLE,
+            State.TAKE_PICTURE,
+            State.VERIFY_PLATE,
+            State.OPEN_GATE,
+        ])
         self.assertEqual(h.count("pipeline_take_picture"), 2)
-        self.assertEqual(h.count("on_gate_opened"), 2)
+        self.assertEqual(h.entered(State.OPEN_GATE), 2)
         self.assertEqual(h.fsm.get_state(), State.OPEN_GATE)
 
     def test_gate_closing_with_beam_clear_stays_idle(self):
@@ -640,7 +759,52 @@ class TestBeamLevel(unittest.TestCase):
 
 
 # ---------------------------------------------------------------------
-# 6. get_state
+# 6. Outputs follow state (on_state_changed)
+# ---------------------------------------------------------------------
+
+class TestStateChanged(unittest.TestCase):
+
+    def run_mixed(self):
+        # valid, invalid, retry-then-valid with car lingering at gate close,
+        # stale nudges and ignored events sprinkled in
+        h = Harness(valid=True)
+        h.car_arrives()
+        h.fsm.breaker_sensor_broken()
+        h.fsm.close_gate()
+        h.fsm.close_gate()
+        h.valid = False
+        h.car_arrives()
+        h.fsm.breaker_sensor_broken()
+        h.car_leaves = False
+        h.hooks["on_buzzer_reached"] = lambda: setattr(h, "valid", True)
+        h.car_arrives()
+        h.car_leaves = True
+        h.fsm.close_gate()
+        return h
+
+    def test_callback_receives_state_members(self):
+        for state in self.run_mixed().transitions:
+            self.assertIsInstance(state, State)
+
+    def test_state_is_already_set_when_callback_runs(self):
+        # The wiring script may call get_state() from the callback
+        self.assertEqual(self.run_mixed().stale_state, [])
+
+    def test_no_change_is_ever_reported_twice_in_a_row(self):
+        t = self.run_mixed().transitions
+        for prev, cur in zip(t, t[1:]):
+            self.assertNotEqual(prev, cur)
+
+    def test_last_reported_state_matches_get_state(self):
+        h = self.run_mixed()
+        self.assertEqual(h.transitions[-1], h.fsm.get_state())
+
+    def test_init_is_never_reported(self):
+        self.assertEqual(self.run_mixed().entered(State.INIT), 0)
+
+
+# ---------------------------------------------------------------------
+# 7. get_state
 # ---------------------------------------------------------------------
 
 class TestGetState(unittest.TestCase):
