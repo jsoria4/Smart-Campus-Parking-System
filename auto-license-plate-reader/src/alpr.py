@@ -1,6 +1,13 @@
 from alpr_fsm import ALPRFSM
 from alpr_pipeline import Pipeline
 
+# Output signals:
+# Open Gate Signal
+# Buzzer signal
+
+# Input signals:
+# Gate closed signal
+
 new_pipeline = None
 
 def init_pipeline():
