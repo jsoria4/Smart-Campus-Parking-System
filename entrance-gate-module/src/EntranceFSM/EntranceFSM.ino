@@ -95,6 +95,10 @@ const int SERVO = 3;
 const int BREAK_BEAM_READ = 2;
 const int BUZZER = 5;
 const int CAPACITY_LED = 1;
+// TODO: GATE_OPEN drives 5V when HIGH, but it feeds a Raspberry Pi GPIO input
+// (ALPR gate_closed, GPIO 27) that is only 3.3V tolerant. Before wiring into the
+// real system, drop it to 3.3V (voltage divider or level shifter, or a DAC/PWM
+// output scaled like VEHICLE_ENTERED) so it doesn't damage the Pi.
 const int GATE_OPEN = 4;
 
 /* Analog pins for communication */

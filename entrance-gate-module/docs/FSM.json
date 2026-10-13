@@ -45,7 +45,7 @@
     {
       "x": 1720,
       "y": 1103,
-      "text": "ultrasense",
+      "text": "Break Sense",
       "isAcceptState": false,
       "textOnly": false
     },
@@ -104,6 +104,13 @@
       "text": "Congested",
       "isAcceptState": false,
       "textOnly": false
+    },
+    {
+      "x": 1650,
+      "y": 700,
+      "text": "Any state",
+      "isAcceptState": false,
+      "textOnly": true
     }
   ],
   "links": [
@@ -111,7 +118,7 @@
       "type": "Link",
       "nodeA": 0,
       "nodeB": 3,
-      "text": "rfid detected",
+      "text": "rfid detected (disabled)",
       "lineAngleAdjust": 3.14159265358979,
       "parallelPart": 0.678863640315037,
       "perpendicularPart": -28.5267004340662
@@ -128,7 +135,7 @@
     {
       "type": "SelfLink",
       "node": 5,
-      "text": "wait 15s",
+      "text": "wait 3 s",
       "anchorAngle": -0.785398163397448
     },
     {
@@ -144,7 +151,7 @@
       "type": "Link",
       "nodeA": 6,
       "nodeB": 7,
-      "text": "!dtcted",
+      "text": "beam clear",
       "lineAngleAdjust": 0,
       "parallelPart": 0.5,
       "perpendicularPart": 0
@@ -161,20 +168,20 @@
     {
       "type": "SelfLink",
       "node": 0,
-      "text": "no rfid scan",
+      "text": "no input",
       "anchorAngle": -2.53996883850994
     },
     {
       "type": "SelfLink",
       "node": 6,
-      "text": "dtced",
+      "text": "beam broken",
       "anchorAngle": -2.61878324171307
     },
     {
       "type": "Link",
       "nodeA": 3,
       "nodeB": 8,
-      "text": "unverfd",
+      "text": "unverified",
       "lineAngleAdjust": 0,
       "parallelPart": 0.112187447322582,
       "perpendicularPart": 46.7443334895114
@@ -183,7 +190,7 @@
       "type": "Link",
       "nodeA": 8,
       "nodeB": 0,
-      "text": "wait buzzer",
+      "text": "More than 250 ms",
       "lineAngleAdjust": 0,
       "parallelPart": 0.526601882781658,
       "perpendicularPart": 11.5496104421983
@@ -191,7 +198,7 @@
     {
       "type": "SelfLink",
       "node": 8,
-      "text": "keep buzzing",
+      "text": "Less than 250 ms",
       "anchorAngle": -1.5707963267949
     },
     {
@@ -285,7 +292,7 @@
       "type": "Link",
       "nodeA": 12,
       "nodeB": 13,
-      "text": "Greater than 1000 ms",
+      "text": "More than 250 ms",
       "lineAngleAdjust": 0,
       "parallelPart": 0.516483516483517,
       "perpendicularPart": -36
@@ -294,7 +301,7 @@
       "type": "Link",
       "nodeA": 13,
       "nodeB": 12,
-      "text": "Greater than 1000 ms",
+      "text": "More than 250 ms",
       "lineAngleAdjust": 3.14159265358979,
       "parallelPart": 0.516483516483517,
       "perpendicularPart": -51
@@ -302,7 +309,7 @@
     {
       "type": "SelfLink",
       "node": 13,
-      "text": "Less than 1000 ms",
+      "text": "Less than 250 ms",
       "anchorAngle": 0
     },
     {
@@ -315,54 +322,9 @@
       "perpendicularPart": 0
     },
     {
-      "type": "Link",
-      "nodeA": 0,
-      "nodeB": 12,
-      "text": "Emergency Override High",
-      "lineAngleAdjust": 3.14159265358979,
-      "parallelPart": 0.898211885005824,
-      "perpendicularPart": -15.8652264019188
-    },
-    {
-      "type": "Link",
-      "nodeA": 11,
-      "nodeB": 12,
-      "text": "Emergency Override High",
-      "lineAngleAdjust": 3.14159265358979,
-      "parallelPart": 0.674415735371468,
-      "perpendicularPart": -62.4221960186443
-    },
-    {
-      "type": "Link",
-      "nodeA": 6,
-      "nodeB": 12,
-      "text": "Emergency Override High",
-      "lineAngleAdjust": 3.14159265358979,
-      "parallelPart": 0.417431543592854,
-      "perpendicularPart": 106.637491154638
-    },
-    {
-      "type": "Link",
-      "nodeA": 5,
-      "nodeB": 12,
-      "text": "Emergency Override High",
-      "lineAngleAdjust": 3.14159265358979,
-      "parallelPart": 0.811637361636223,
-      "perpendicularPart": 0
-    },
-    {
-      "type": "Link",
-      "nodeA": 8,
-      "nodeB": 12,
-      "text": "Emergency Override High",
-      "lineAngleAdjust": 3.14159265358979,
-      "parallelPart": 0.273605821312247,
-      "perpendicularPart": -40.7655433580736
-    },
-    {
       "type": "SelfLink",
       "node": 12,
-      "text": "Less than 1000 ms",
+      "text": "Less than 250 ms",
       "anchorAngle": 2.6392748252971
     },
     {
@@ -388,6 +350,24 @@
       "node": 14,
       "text": "Is Congested",
       "anchorAngle": 1.74839249407838
+    },
+    {
+      "type": "Link",
+      "nodeA": 15,
+      "nodeB": 12,
+      "text": "Emergency Override High",
+      "lineAngleAdjust": 0,
+      "parallelPart": 0.5,
+      "perpendicularPart": 0
+    },
+    {
+      "type": "Link",
+      "nodeA": 0,
+      "nodeB": 8,
+      "text": "Buzzer signal",
+      "lineAngleAdjust": 0,
+      "parallelPart": 0.5,
+      "perpendicularPart": 40
     }
   ],
   "nodeRadius": 55,
