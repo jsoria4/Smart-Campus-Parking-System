@@ -170,3 +170,4 @@ bin/
 *.orig
 *.rej
 ./auto-license-plate-reader/ALPRvenv
+!auto-license-plate-reader/best50_ncnn_model/model.ncnn.bin
