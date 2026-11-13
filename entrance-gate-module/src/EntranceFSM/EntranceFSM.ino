@@ -53,7 +53,6 @@ const char* const stateNames[] = {
 /* LED Colors */
 enum class LEDColor {
   Red,
-  Yellow,
   Green
 };
 
@@ -63,7 +62,6 @@ enum class LEDColor {
 
 /* Pins */
 const int RED_LED = 8;
-const int YELLOW_LED = 7;
 const int GREEN_LED = 6;
 const int SERVO = 3;
 const int BREAK_BEAM_READ = 2;
@@ -186,7 +184,7 @@ State currentState;
 Servo servo;
 
 /* LEDColor enum value -> pin, indexed by static_cast<int>(LEDColor). */
-const int LED_PINS[] = { RED_LED, YELLOW_LED, GREEN_LED };
+const int LED_PINS[] = { RED_LED, GREEN_LED };
 
 /**
  * Resolves an LEDColor enum to its corresponding pin.
@@ -214,7 +212,6 @@ void setLEDEnabled(const LEDColor LED, const bool enabled) {
  */
 void disableLEDS() {
   setLEDEnabled(LEDColor::Red, false);
-  setLEDEnabled(LEDColor::Yellow, false);
   setLEDEnabled(LEDColor::Green, false);
 }
 
@@ -223,26 +220,24 @@ void disableLEDS() {
  */
 void enableLEDS() {
   setLEDEnabled(LEDColor::Red, true);
-  setLEDEnabled(LEDColor::Yellow, true);
   setLEDEnabled(LEDColor::Green, true);
 }
 
 /**
- * Shows the "alert" LED pattern (red only) — gate closed, waiting for a vehicle, or buzzing.
+ * Shows the "alert" LED pattern (red only) — any time the gate is not fully open:
+ * closed and waiting, buzzing, or mid-swing.
  */
 void showAlertLEDs() {
   setLEDEnabled(LEDColor::Red, true);
-  setLEDEnabled(LEDColor::Yellow, false);
   setLEDEnabled(LEDColor::Green, false);
 }
 
 /**
- * Shows the "transit" LED pattern (yellow only) — the gate is mid-swing.
+ * Shows the "open" LED pattern (green only) — the gate is fully open.
  */
-void showTransitLEDs() {
+void showOpenLEDs() {
   setLEDEnabled(LEDColor::Red, false);
-  setLEDEnabled(LEDColor::Yellow, true);
-  setLEDEnabled(LEDColor::Green, false);
+  setLEDEnabled(LEDColor::Green, true);
 }
 
 /**
@@ -421,7 +416,7 @@ void handleBuzzer() {
 // ── OpenGate ─────────────────────────────────────────────────────
 // Command the gate to open, then move to HoldGateOpen.
 void handleOpenGate() {
-  showTransitLEDs();
+  showAlertLEDs();
 
   startHappyBuzzer();
 
@@ -444,8 +439,7 @@ void handleDriveOpenServo() {
 // Hold the gate open for GATE_HOLD_MS, then check for vehicle
 // presence via ultrasonic.
 void handleHoldGateOpen() {
-  setLEDEnabled(LEDColor::Green, true);
-  setLEDEnabled(LEDColor::Yellow, false);
+  showOpenLEDs();
 
   if (elapsedSince(gateOpenedMs, GATE_HOLD_MS)) {
     transitionTo(State::BreakSense);
@@ -468,7 +462,7 @@ void handleBreakSense() {
 // ── CloseGate ─────────────────────────────────────────────────────
 // Close the gate and move on to update the counter.
 void handleCloseGate() {
-  showTransitLEDs();
+  showAlertLEDs();
 
   gateSweep.angle = SERVO_OPEN;
   transitionTo(State::DriveCloseServo);
@@ -583,7 +577,6 @@ void setup() {
   Serial.println("Initializing...");
 
   pinMode(RED_LED, OUTPUT);
-  pinMode(YELLOW_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
   pinMode(BUZZER, OUTPUT);
   pinMode(GATE_OPEN, OUTPUT);
