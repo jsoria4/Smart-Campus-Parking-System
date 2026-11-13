@@ -77,8 +77,7 @@ const char* const stateNames[] = {
 enum class LEDColor {
   Red,
   Yellow,
-  Green,
-  Blue
+  Green
 };
 
 /* Arduino R4 Settings -----------------------------------------------------------------*/
@@ -94,7 +93,6 @@ const int GREEN_LED = 6;
 const int SERVO = 3;
 const int BREAK_BEAM_READ = 2;
 const int BUZZER = 5;
-const int CAPACITY_LED = 1;
 // TODO: GATE_OPEN drives 5V when HIGH, but it feeds a Raspberry Pi GPIO input
 // (ALPR gate_closed, GPIO 27) that is only 3.3V tolerant. Before wiring into the
 // real system, drop it to 3.3V with the same 1k/2k divider used on VEHICLE_ENTERED
@@ -253,7 +251,7 @@ MFRC522 mfrc522(SS_PIN, RST_PIN);
 Servo servo;
 
 /* LEDColor enum value -> pin, indexed by static_cast<int>(LEDColor). */
-const int LED_PINS[] = { RED_LED, YELLOW_LED, GREEN_LED, CAPACITY_LED };
+const int LED_PINS[] = { RED_LED, YELLOW_LED, GREEN_LED };
 
 /**
  * Resolves an LEDColor enum to its corresponding pin.
@@ -283,7 +281,6 @@ void disableLEDS() {
   setLEDEnabled(LEDColor::Red, false);
   setLEDEnabled(LEDColor::Yellow, false);
   setLEDEnabled(LEDColor::Green, false);
-  setLEDEnabled(LEDColor::Blue, false);
 }
 
 /**
@@ -293,7 +290,6 @@ void enableLEDS() {
   setLEDEnabled(LEDColor::Red, true);
   setLEDEnabled(LEDColor::Yellow, true);
   setLEDEnabled(LEDColor::Green, true);
-  setLEDEnabled(LEDColor::Blue, true);
 }
 
 /**
@@ -640,13 +636,9 @@ void handleIncrementSignal() {
 
 // ── At Capacity ─────────────────────────────────────────────────
 void handleAtCapacity() {
-  setLEDEnabled(LEDColor::Blue, true);
-
   if (isSpaceFull()) {
     return;
   }
-
-  setLEDEnabled(LEDColor::Blue, false);
 
   transitionTo(State::Idle);
 }
@@ -733,7 +725,6 @@ void setup() {
   pinMode(RED_LED, OUTPUT);
   pinMode(YELLOW_LED, OUTPUT);
   pinMode(GREEN_LED, OUTPUT);
-  pinMode(CAPACITY_LED, OUTPUT);
   pinMode(BUZZER, OUTPUT);
   pinMode(GATE_OPEN, OUTPUT);
   pinMode(VEHICLE_ENTERED, OUTPUT);
