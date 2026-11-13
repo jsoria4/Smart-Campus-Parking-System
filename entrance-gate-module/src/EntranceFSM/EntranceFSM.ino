@@ -1,45 +1,23 @@
 /**
  * @file EntranceFSM.ino
- * @brief Implementation of the entrance FSM on an Arduino R4 with Wifi.
+ * @brief Implementation of the entrance FSM on an Arduino Nano.
  *
  * Code for the FSM that controls the gate.
- * Uses an RFID reader and an ultrasonic sensor to
- * prompt people entering the parking lot, and then
- * open a gate for them temporarily.
+ * Opens the gate when the license plate reader signals an
+ * authorized plate, and uses a break-beam sensor to hold it
+ * open until the vehicle has passed.
  *
  * @author Landon Wardle
  * @date 5/4/2026
  * @version 1.0
  */
 
-/*
- * --------------------------------------------------------------------------------------------------------------------
- * Example to change UID of changeable MIFARE card.
- * --------------------------------------------------------------------------------------------------------------------
- * This is a MFRC522 library example; for further details and other examples see: https://github.com/miguelbalboa/rfid
- *
- * Typical pin layout used:
- * -----------------------------------------------------------------------------------------
- *             MFRC522      Arduino       Arduino   Arduino    Arduino          Arduino
- *             Reader/PCD   Uno           Mega      Nano v3    Leonardo/Micro   Pro Micro
- * Signal      Pin          Pin           Pin       Pin        Pin              Pin
- * -----------------------------------------------------------------------------------------
- * RST/Reset   RST          9             5         D9         RESET/ICSP-5     RST
- * SPI SS      SDA(SS)      10            53        D10        10               10
- * SPI MOSI    MOSI         11 / ICSP-4   51        D11        ICSP-4           16
- * SPI MISO    MISO         12 / ICSP-1   50        D12        ICSP-1           14
- * SPI SCK     SCK          13 / ICSP-3   52        D13        ICSP-3           15
- */
-
 /* Standard Library Imports */
-#include <SPI.h>
-#include <MFRC522.h>
 #include <Servo.h>
 
 /* State Enums */
 enum class State {
   Idle,
-  Scan,
   Buzzer,
   OpenGate,
   HoldGateOpen,
@@ -58,7 +36,6 @@ enum class State {
 /* State Names in an Array for simplicity */
 const char* const stateNames[] = {
   "Idle",
-  "Scan",
   "Buzzer",
   "OpenGate",
   "HoldGateOpen",
@@ -80,13 +57,11 @@ enum class LEDColor {
   Green
 };
 
-/* Arduino R4 Settings -----------------------------------------------------------------*/
+/* Arduino Nano Settings -----------------------------------------------------------------*/
 
 
 
 /* Pins */
-const int RST_PIN = 9;   // Configurable, see typical pin layout above
-const int SS_PIN = 10;   // Configurable, see typical pin layout above
 const int RED_LED = 8;
 const int YELLOW_LED = 7;
 const int GREEN_LED = 6;
@@ -106,7 +81,7 @@ const int PLATE_AUTHORIZED = A2;
 const int SPACE_FULL = A3;
 const int CONGESTED = A4;
 const int TRIGGER_BUZZER = A5;
-const int LOGICAL_HIGH = 650; // 3.3 Volts, threshold for analogRead() comparisons (10-bit ADC scale)
+const int LOGICAL_HIGH = 400; // ~2 Volts, threshold for analogRead() comparisons (10-bit ADC scale, 5V ref); leaves margin below the Pi's 3.3V high
 const int LOGICAL_LOW = 0; // 0 Volts
 
 /* The Nano has no DAC, so VEHICLE_ENTERED is driven as a plain 5V digital output.
@@ -147,7 +122,7 @@ const float GATE_TICK = 3000.0f / abs(static_cast<float>(SERVO_OPEN - SERVO_CLOS
 /* Frquency the buzzer emits when turned on (Hz) */
 const unsigned int BUZZER_ON_FREQ = 5000;
 
-/* How long the buzzer sounds for an unverified scan, in milliseconds. */
+/* How long the buzzer sounds when the buzzer signal is triggered, in milliseconds. */
 const unsigned long BUZZER_DURATION_MS = 250UL;
 
 /* Happy Buzzer Settings -----------------------------------------------------------------*/
@@ -155,7 +130,7 @@ const unsigned long BUZZER_DURATION_MS = 250UL;
 
 
 /**
- * Ascending three-tone chirp played when a card verifies successfully.
+ * Ascending three-tone chirp played when the gate opens.
  * Each entry is {frequency_hz, duration_ms}. A short gap is inserted
  * between tones so they don't blur together.
  */
@@ -176,43 +151,6 @@ const unsigned int HAPPY_BUZZER_LEN = sizeof(HAPPY_BUZZER_SEQUENCE) / sizeof(HAP
 /* Silence inserted between consecutive tones in the sequence, in milliseconds. */
 const unsigned int HAPPY_BUZZER_GAP_MS = 30;
 
-/* Authorized UID Settings -----------------------------------------------------------------*/
-
-
-
-/* Prints every scanned UID to Serial when true. Flip to false before shipping. */
-const bool DEBUG_RFID = true;
-
-/**
- * The maximum UID length the reader can produce.
- * MIFARE Classic is 4 bytes; MIFARE DESFire / newer cards are 7;
- * the ISO/IEC 14443-3 spec also allows 10. We size for the max.
- */
-const unsigned int MAX_UID_LEN = 10;
-
-/**
- * An authorized UID entry. `length` records how many bytes of `bytes`
- * are meaningful; trailing bytes are ignored during comparison.
- */
-struct AuthorizedUID {
-  byte length;
-  byte bytes[MAX_UID_LEN];
-};
-
-/**
- * The list of authorized card UIDs.
- * To add a card: scan it once with debug logging enabled, copy the
- * printed UID here, and reflash.
- */
-const AuthorizedUID AUTHORIZED_UIDS[] = {
-  // Example 4-byte UID — replace with real values
-  {4, {0xD3, 0x1C, 0x80, 0x14}},
-  // Example 7-byte UID
-  {7, {0x04, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0x00, 0x00, 0x00}}
-};
-
-/* Number of entries in AUTHORIZED_UIDS. */
-const unsigned int AUTHORIZED_UID_COUNT = sizeof(AUTHORIZED_UIDS) / sizeof(AUTHORIZED_UIDS[0]);
 /* State  ----------------------------------------------------------------- */
 
 
@@ -243,9 +181,6 @@ ServoSweep gateSweep = { 0, 0 };
 
 /* Current state of the FSM. */
 State currentState;
-
-/* MFRC522 RFID reader instance. */
-MFRC522 mfrc522(SS_PIN, RST_PIN);
 
 /* Servo class. */
 Servo servo;
@@ -293,7 +228,7 @@ void enableLEDS() {
 }
 
 /**
- * Shows the "alert" LED pattern (red only) — waiting for a scan, or rejecting one.
+ * Shows the "alert" LED pattern (red only) — gate closed, waiting for a vehicle, or buzzing.
  */
 void showAlertLEDs() {
   setLEDEnabled(LEDColor::Red, true);
@@ -329,64 +264,6 @@ void transitionTo(const State next) {
  */
 bool elapsedSince(const unsigned long since, const unsigned long duration) {
   return now - since >= duration;
-}
-
-/**
- * Checks whether an RFID card has been presented to the reader.
- *
- * @return true if a new card was detected and selected.
- */
-bool rfidDetected() {
-  if (!mfrc522.PICC_IsNewCardPresent()) return false;
-  if (!mfrc522.PICC_ReadCardSerial())   return false;
-  return true;
-}
-
-/**
- * Prints the most recently read UID to the serial monitor in hex.
- * Useful when enrolling new cards — scan the card with this called
- * and copy the printed bytes into AUTHORIZED_UIDS.
- */
-void printLastUID() {
-  Serial.print("UID (");
-  Serial.print(mfrc522.uid.size);
-  Serial.print(" bytes): ");
-  for (byte i = 0; i < mfrc522.uid.size; i++) {
-    if (mfrc522.uid.uidByte[i] < 0x10) Serial.print('0');
-    Serial.print(mfrc522.uid.uidByte[i], HEX);
-    if (i < mfrc522.uid.size - 1) Serial.print(' ');
-  }
-  Serial.println();
-}
-
-/**
- * Verifies whether the most recently read RFID card is authorized.
- *
- * @note STUB — replace with real UID comparison or backend lookup.
- *
- * @return true if the card is verified.
- */
-bool isCardVerified() {
-  if (DEBUG_RFID) {
-    printLastUID();
-  }
-
-  const byte readLen = mfrc522.uid.size;
-
-  for (unsigned int i = 0; i < AUTHORIZED_UID_COUNT; i++) {
-    const AuthorizedUID &entry = AUTHORIZED_UIDS[i];
-
-    if (entry.length != readLen) continue;
-
-    if (memcmp(mfrc522.uid.uidByte, entry.bytes, readLen) == 0) {
-      Serial.print("Authorized UID matched index ");
-      Serial.println(i);
-      return true;
-    }
-  }
-
-  Serial.println("UID not authorized");
-  return false;
 }
 
 /**
@@ -506,7 +383,7 @@ bool isPlateAuthorized() {
 
 
 // ── Idle ─────────────────────────────────────────────────────────
-// Wait for an RFID card to be presented. Self-loops while no scan.
+// Wait for an authorized plate or another input signal. Self-loops while none.
 void handleIdle() {
   showAlertLEDs();
 
@@ -514,35 +391,19 @@ void handleIdle() {
 
   digitalWrite(GATE_OPEN, LOW);
 
-  if (rfidDetected()) {
-  } else if (isSpaceFull()) {
+  if (isSpaceFull()) {
     transitionTo(State::AtCapacity);
   } else if (isCongested()) {
     transitionTo(State::Congested);
   } else if (currentPlateAuthorized && currentPlateAuthorized != lastPlateAuthorized) { // On the rising edge
     transitionTo(State::OpenGate);
-  } else if (rfidDetected()) {
-    transitionTo(State::Scan);
   } else if (isBuzzerSignalHigh()) {
     buzzerStartMs = now;
     setBuzzer(true);
     transitionTo(State::Buzzer);
   }
   lastPlateAuthorized = currentPlateAuthorized;
-  // else: self-loop ("no rfid scan")
-}
-
-// ── Scan ─────────────────────────────────────────────────────────
-// Verify the scanned card. Branch to OpenGate on success or
-// Buzzer on failure.
-void handleScan() {
-  if (isCardVerified()) {
-    transitionTo(State::OpenGate);
-  } else {
-    buzzerStartMs = now;
-    setBuzzer(true);
-    transitionTo(State::Buzzer);
-  }
+  // else: self-loop ("no input")
 }
 
 // ── Buzzer ───────────────────────────────────────────────────────
@@ -690,7 +551,6 @@ void congested() {
 /* Dispatch table: index = static_cast<int>(State). Order must match the State enum. */
 void (*const stateHandlers[])() = {
   handleIdle,
-  handleScan,
   handleBuzzer,
   handleOpenGate,
   handleHoldGateOpen,
@@ -737,9 +597,6 @@ void setup() {
 
   disableLEDS();
   setBuzzer(false);
-
-  SPI.begin();
-  mfrc522.PCD_Init();
 
   Serial.println("Initialization complete!");
 
