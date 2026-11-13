@@ -148,9 +148,6 @@ const float GATE_TICK = 3000.0f / abs(static_cast<float>(SERVO_OPEN - SERVO_CLOS
 
 /* Buzzer Settings -------------------------------------------------------- */
 
-/* Frquency the buzzer emits when turned off (Hz) */
-const unsigned int BUZZER_OFF_FREQ = 0;
-
 /* Frquency the buzzer emits when turned on (Hz) */
 const unsigned int BUZZER_ON_FREQ = 5000;
 
@@ -404,7 +401,11 @@ bool isCardVerified() {
  * @param on true to sound the buzzer, false to silence it.
  */
 void setBuzzer(const bool on) {
-  tone(BUZZER, on ? BUZZER_ON_FREQ : BUZZER_OFF_FREQ);
+  if (on) {
+    tone(BUZZER, BUZZER_ON_FREQ);
+  } else {
+    noTone(BUZZER); // tone(pin, 0) divides by zero on AVR and emits a garbage waveform
+  }
 }
 
 /**
