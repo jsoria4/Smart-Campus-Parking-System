@@ -97,8 +97,8 @@ const int BUZZER = 5;
 const int CAPACITY_LED = 1;
 // TODO: GATE_OPEN drives 5V when HIGH, but it feeds a Raspberry Pi GPIO input
 // (ALPR gate_closed, GPIO 27) that is only 3.3V tolerant. Before wiring into the
-// real system, drop it to 3.3V (voltage divider or level shifter, or a DAC/PWM
-// output scaled like VEHICLE_ENTERED) so it doesn't damage the Pi.
+// real system, drop it to 3.3V with the same 1k/2k divider used on VEHICLE_ENTERED
+// (or a level shifter) so it doesn't damage the Pi.
 const int GATE_OPEN = 4;
 
 /* Analog pins for communication */
@@ -111,12 +111,10 @@ const int TRIGGER_BUZZER = A5;
 const int LOGICAL_HIGH = 650; // 3.3 Volts, threshold for analogRead() comparisons (10-bit ADC scale)
 const int LOGICAL_LOW = 0; // 0 Volts
 
-/* analogWrite() on the R4's A0 DAC defaults to 8-bit resolution (0-255). Measured full-scale
- * (255) is ~4.5V on this board rather than the datasheet's 3.3V, so this is scaled down
- * (255 * 3.3/4.5) to hit 3.3V 
+/* The Nano has no DAC, so VEHICLE_ENTERED is driven as a plain 5V digital output.
+ * It must pass through a resistor divider (A0 -> 1k -> Pi GPIO -> 2k -> GND, ~3.33V)
+ * before reaching the 3.3V-tolerant Pi input.
  */
-const int DAC_HIGH = 175;
-const int DAC_LOW = 0;
 
 /* The baud rate to the serial monitor. */
 const unsigned int BAUD_RATE = 9600;
@@ -630,13 +628,13 @@ void handleDriveCloseServo() {
 
 // ── IncrementSignal ─────────────────────────────────────────────────
 void handleIncrementSignal() {
-  analogWrite(VEHICLE_ENTERED, DAC_HIGH);
+  digitalWrite(VEHICLE_ENTERED, HIGH);
 
   if (!elapsedSince(stateEnteredMs, INCREMENT_SIGNAL_DURATION_MS)) {
     return;
   }
 
-  analogWrite(VEHICLE_ENTERED, DAC_LOW);
+  digitalWrite(VEHICLE_ENTERED, LOW);
   transitionTo(State::Idle);
 }
 
@@ -658,7 +656,7 @@ void handleEmergency() {
   servo.write(SERVO_OPEN);
   disableLEDS();
   setBuzzer(false);
-  analogWrite(VEHICLE_ENTERED, DAC_LOW); // force low in case emergency interrupted IncrementSignal mid-pulse
+  digitalWrite(VEHICLE_ENTERED, LOW); // force low in case emergency interrupted IncrementSignal mid-pulse
   digitalWrite(GATE_OPEN, HIGH);
 
   if (!isEmergencyOverrideActive()) {
@@ -738,6 +736,7 @@ void setup() {
   pinMode(CAPACITY_LED, OUTPUT);
   pinMode(BUZZER, OUTPUT);
   pinMode(GATE_OPEN, OUTPUT);
+  pinMode(VEHICLE_ENTERED, OUTPUT);
 
   pinMode(BREAK_BEAM_READ, INPUT);
 
